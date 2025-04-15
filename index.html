@@ -113,11 +113,22 @@
 
   <script>
     // Mockup of user login process
+    let isLoggedIn = false;
+    let accountType = 'demo'; // Could be 'demo' or 'real'
+    let userBalance = 0;
+    let username = 'guest';
+
     document.getElementById('loginBtn').addEventListener('click', function() {
-      document.getElementById('user-info').innerHTML = '👤 You are logged in as John Doe';
+      // Simulate login process (in a real scenario, you'd fetch data from an API)
+      isLoggedIn = true;
+      username = 'John Doe';
+      accountType = 'demo'; // This would change to 'real' for real accounts
+      userBalance = accountType === 'demo' ? 1000 : 5000; // Real account balance is higher
+
+      // Update UI based on login status
+      document.getElementById('user-info').innerHTML = `👤 Welcome, ${username}`;
       document.getElementById('login-section').innerHTML = '';
-      document.getElementById('balance-info').innerHTML = '💰 Balance: $1000';
-      // Mock for enabling features after login
+      document.getElementById('balance-info').innerHTML = `💰 Balance: $${userBalance}`;
       document.querySelector('.card-body').style.display = 'block';
       document.getElementById('placeTradeBtn').style.display = 'block';
     });
@@ -147,9 +158,9 @@
 
     const candleSeries = chart.addCandlestickSeries();
 
-    // Replace with your API endpoint to fetch live data
+    // Fetch live data (replace with your actual API)
     const fetchLiveData = async (symbol) => {
-      const url = `https://api.example.com/candles?symbol=${symbol}&count=1`; // Replace with your actual API URL
+      const url = `https://api.example.com/candles?symbol=${symbol}&count=1`; // Replace with actual API URL
       try {
         const response = await fetch(url);
         const data = await response.json();
@@ -170,16 +181,14 @@
         close: candle.close
       }));
 
-      // Add new candle to the series, removing the old one if there are too many
       const currentData = candleSeries.getData();
-      currentData.push(formattedCandles[0]); // Add new candle
-
-      // Keep the chart within a reasonable number of candles (e.g., show only the last 100)
+      currentData.push(formattedCandles[0]);
+      
       if (currentData.length > 100) {
         currentData.shift(); // Remove the oldest candle
       }
 
-      candleSeries.setData(currentData); // Update the chart
+      candleSeries.setData(currentData);
     };
 
     // Function to fetch and update live data periodically
@@ -191,7 +200,7 @@
         if (newCandles.length > 0) {
           updateChart(newCandles);
         }
-      }, 10000); // Update every 10 seconds
+      }, 10000);
     });
 
     // Fetch initial data and set chart
