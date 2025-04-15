@@ -95,3 +95,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // Start WebSocket connection with the selected symbol
   startWebSocket(currentSymbol);
 });
+
+lineSeries.update({
+  time: Math.floor(tick.epoch),
+  value: tick.quote,
+});
