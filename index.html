@@ -9,25 +9,21 @@
     body {
       background-color: #f8f9fa;
     }
-
     #tv_chart_container {
       height: 500px;
       width: 100%;
       border: 1px solid #ccc;
       background-color: #fff;
     }
-
     .card-header {
       font-weight: bold;
     }
-
     #contract-info {
       font-size: 0.95rem;
     }
   </style>
 </head>
 <body>
-
   <div class="container mt-4">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -87,6 +83,101 @@
   <!-- JavaScript Dependencies -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
-  <script src="js/app.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const APP_ID = "68037";
+      const REDIRECT_URL = window.location.href;
+      const token = new URLSearchParams(window.location.search).get("token");
+
+      const loginBtn = document.getElementById("loginBtn");
+      const loginSection = document.getElementById("login-section");
+      const userInfo = document.getElementById("user-info");
+      const symbolSelector = document.getElementById("symbolSelector");
+
+      if (token) {
+        loginSection.classList.add("d-none");
+        userInfo.classList.replace("alert-secondary", "alert-success");
+        userInfo.textContent = "✅ Logged in via Deriv";
+      }
+
+      loginBtn.addEventListener("click", () => {
+        const loginUrl = `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URL)}`;
+        window.location.href = loginUrl;
+      });
+
+      const chartContainer = document.getElementById("tv_chart_container");
+      const chart = LightweightCharts.createChart(chartContainer, {
+        width: chartContainer.clientWidth,
+        height: 500,
+        layout: { background: { color: '#fff' }, textColor: '#000' },
+        grid: {
+          vertLines: { color: '#eee' },
+          horzLines: { color: '#eee' }
+        },
+        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+        priceScale: { borderColor: '#ccc' },
+        timeScale: { borderColor: '#ccc' }
+      });
+
+      const lineSeries = chart.addLineSeries();
+
+      let ws;
+      let tickSubscriptionId;
+      let currentSymbol = symbolSelector.value;
+
+      function startWebSocket(symbol) {
+        ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`);
+
+        ws.onopen = () => {
+          if (token) ws.send(JSON.stringify({ authorize: token }));
+          ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
+          document.getElementById("marketName").textContent = symbol;
+          document.getElementById("status").textContent = "✅ Live data streaming...";
+        };
+
+        ws.onmessage = (msg) => {
+          const data = JSON.parse(msg.data);
+
+          if (data.msg_type === "tick") {
+            const tick = data.tick;
+            tickSubscriptionId = tick.id;
+
+            lineSeries.update({
+              time: Math.floor(tick.epoch),
+              value: tick.quote,
+            });
+
+            document.getElementById("lastPrice").textContent = tick.quote;
+            document.getElementById("contractType").textContent = "Smart Tick Feed";
+          } else if (data.msg_type === "error") {
+            console.error("Error from Deriv API:", data.error.message);
+            document.getElementById("status").textContent = `❌ Error: ${data.error.message}`;
+          }
+        };
+
+        ws.onerror = (e) => {
+          console.error("WebSocket Error:", e);
+          document.getElementById("status").textContent = "❌ WebSocket error!";
+        };
+
+        ws.onclose = () => {
+          console.warn("WebSocket Closed");
+          document.getElementById("status").textContent = "🕔 WebSocket disconnected";
+        };
+      }
+
+      symbolSelector.addEventListener("change", () => {
+        currentSymbol = symbolSelector.value;
+        if (ws && tickSubscriptionId) {
+          ws.send(JSON.stringify({ forget: tickSubscriptionId }));
+          ws.close();
+        }
+        startWebSocket(currentSymbol);
+      });
+
+      startWebSocket(currentSymbol);
+    });
+  </script>
 </body>
 </html>

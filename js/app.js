@@ -1,102 +1,138 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // Constants for your Deriv app
-  const APP_ID = "68037"; // Your app ID
-  const REDIRECT_URL = window.location.href; // Redirect URL after successful login
+  const APP_ID = "68037";
+  const REDIRECT_URL = window.location.href;
   const token = new URLSearchParams(window.location.search).get("token");
 
-  // Elements in the DOM
   const loginBtn = document.getElementById("loginBtn");
   const loginSection = document.getElementById("login-section");
   const userInfo = document.getElementById("user-info");
   const symbolSelector = document.getElementById("symbolSelector");
+  const chartContainer = document.getElementById("tv_chart_container");
 
-  // Handle login flow
+  if (!chartContainer || !symbolSelector || !loginBtn || !userInfo) {
+    console.error("Required DOM elements not found.");
+    return;
+  }
+
   if (token) {
     loginSection.classList.add("d-none");
     userInfo.textContent = "✅ Logged in via Deriv";
   }
 
   loginBtn.addEventListener("click", () => {
-    // Redirect to the Deriv OAuth login page
     const loginUrl = `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URL)}`;
     window.location.href = loginUrl;
   });
 
-  // Chart setup using LightweightCharts
-  const chartContainer = document.getElementById("tv_chart_container");
+  // Chart Setup
   const chart = LightweightCharts.createChart(chartContainer, {
     width: chartContainer.clientWidth,
     height: 500,
     layout: {
-      background: { color: '#ffffff' },
-      textColor: '#333',
+      background: { color: "#ffffff" },
+      textColor: "#333",
     },
     grid: {
-      vertLines: { color: '#eee' },
-      horzLines: { color: '#eee' },
+      vertLines: { color: "#eee" },
+      horzLines: { color: "#eee" },
     },
     crosshair: {
       mode: LightweightCharts.CrosshairMode.Normal,
     },
-    priceScale: { borderColor: '#ccc' },
-    timeScale: { borderColor: '#ccc' },
+    priceScale: { borderColor: "#ccc" },
+    timeScale: { borderColor: "#ccc" },
   });
 
   const lineSeries = chart.addLineSeries();
 
-  // WebSocket and tick data management
   let ws;
-  let tickSubscriptionId;
+  let tickSubscriptionId = null;
   let currentSymbol = symbolSelector.value;
 
   function startWebSocket(symbol) {
-    // Initialize WebSocket connection to Deriv's WebSocket API
+    if (ws) {
+      ws.close();
+    }
+
     ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`);
 
     ws.onopen = () => {
-      // If a token exists (user is logged in), authorize via WebSocket
-      if (token) ws.send(JSON.stringify({ authorize: token }));
-      
-      // Subscribe to the market ticks (real-time price updates)
+      console.log("WebSocket connected ✅");
+
+      if (token) {
+        ws.send(JSON.stringify({ authorize: token }));
+      }
+
       ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
     };
 
-    // Handle incoming WebSocket messages (price ticks)
     ws.onmessage = (msg) => {
       const data = JSON.parse(msg.data);
+
+      if (data.error) {
+        console.error("Error from Deriv API:", data.error.message);
+        return;
+      }
+
       if (data.msg_type === "tick") {
         const tick = data.tick;
         tickSubscriptionId = tick.id;
 
-        // Update the chart with the new tick data
+        console.log("Tick received:", tick);
+
         lineSeries.update({
-          time: Math.floor(tick.epoch), // Epoch time converted to seconds
-          value: tick.quote, // Price value of the tick
+          time: Math.floor(tick.epoch),
+          value: tick.quote,
         });
       }
     };
 
-    ws.onerror = (e) => console.error("WebSocket error:", e);
-    ws.onclose = () => console.warn("WebSocket closed");
+    ws.onerror = (e) => {
+      console.error("WebSocket error:", e);
+    };
+
+    ws.onclose = () => {
+      console.warn("WebSocket closed. Reconnecting...");
+      setTimeout(() => startWebSocket(currentSymbol), 3000);
+    };
   }
 
-  // Listen for changes in the symbol selector (market choice)
   symbolSelector.addEventListener("change", () => {
-    currentSymbol = symbolSelector.value;
+    const newSymbol = symbolSelector.value;
     if (ws && tickSubscriptionId) {
-      // Unsubscribe from the previous symbol
       ws.send(JSON.stringify({ forget: tickSubscriptionId }));
-      ws.close();
     }
-    // Start WebSocket connection with the new symbol
+    currentSymbol = newSymbol;
     startWebSocket(currentSymbol);
   });
 
-  // Start WebSocket connection with the selected symbol
+  // Initialize chart with the default symbol
   startWebSocket(currentSymbol);
-});
 
-lineSeries.update({
-  time: Math.floor(tick.epoch),
-  value: tick.quote,
+  // === [Optional] Prepare for bot trading logic ===
+  function placeTradeExample() {
+    if (!token) {
+      alert("You must be logged in to place trades.");
+      return;
+    }
+
+    // Example trade: Call option
+    const contractRequest = {
+      buy: 1,
+      price: 1,
+      parameters: {
+        amount: 1,
+        basis: "stake",
+        contract_type: "CALL",
+        currency: "USD",
+        duration: 1,
+        duration_unit: "m",
+        symbol: currentSymbol,
+      },
+    };
+
+    ws.send(JSON.stringify(contractRequest));
+  }
+
+  // You can call `placeTradeExample()` later when ready to place trades
 });
