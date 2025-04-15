@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   const APP_ID = "68037";
   const REDIRECT_URL = window.location.origin + window.location.pathname;
-
+  
   const token = new URLSearchParams(window.location.search).get("token");
 
   const loginBtn = document.getElementById("loginBtn");
