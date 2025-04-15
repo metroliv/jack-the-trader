@@ -1,0 +1,9 @@
+body {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  }
+  
+  #price {
+    font-weight: bold;
+    color: #28a745;
+  }
+  
