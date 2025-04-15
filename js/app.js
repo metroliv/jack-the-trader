@@ -16,10 +16,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (token) {
     loginSection.classList.add("d-none");
-    userInfo.textContent = "✅ Logged in via Deriv";
+    userInfo.innerHTML = `<i class="fas fa-check-circle text-success"></i> Logged in via Deriv`;
   }
 
   loginBtn.addEventListener("click", () => {
+    // Redirect to Deriv's OAuth login page
     const loginUrl = `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URL)}`;
     window.location.href = loginUrl;
   });
@@ -57,7 +58,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`);
 
     ws.onopen = () => {
-      console.log("WebSocket connected ✅");
+      console.log("✅ WebSocket connected");
 
       if (token) {
         ws.send(JSON.stringify({ authorize: token }));
@@ -70,7 +71,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = JSON.parse(msg.data);
 
       if (data.error) {
-        console.error("Error from Deriv API:", data.error.message);
+        console.error("❌ Deriv API Error:", data.error.message);
         return;
       }
 
@@ -78,7 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const tick = data.tick;
         tickSubscriptionId = tick.id;
 
-        console.log("Tick received:", tick);
+        console.log("📈 Tick received:", tick);
 
         lineSeries.update({
           time: Math.floor(tick.epoch),
@@ -88,11 +89,11 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     ws.onerror = (e) => {
-      console.error("WebSocket error:", e);
+      console.error("⚠️ WebSocket error:", e);
     };
 
     ws.onclose = () => {
-      console.warn("WebSocket closed. Reconnecting...");
+      console.warn("🔄 WebSocket closed. Reconnecting...");
       setTimeout(() => startWebSocket(currentSymbol), 3000);
     };
   }
@@ -109,14 +110,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize chart with the default symbol
   startWebSocket(currentSymbol);
 
-  // === [Optional] Prepare for bot trading logic ===
+  // === Trade example (future use) ===
   function placeTradeExample() {
     if (!token) {
-      alert("You must be logged in to place trades.");
+      alert("🚫 You must be logged in to place trades.");
       return;
     }
 
-    // Example trade: Call option
     const contractRequest = {
       buy: 1,
       price: 1,
@@ -134,5 +134,5 @@ document.addEventListener("DOMContentLoaded", () => {
     ws.send(JSON.stringify(contractRequest));
   }
 
-  // You can call `placeTradeExample()` later when ready to place trades
+  // Example button later: placeTradeExample();
 });
