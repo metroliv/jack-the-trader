@@ -1,8 +1,9 @@
 document.addEventListener("DOMContentLoaded", () => {
   const APP_ID = "68037";
   const REDIRECT_URL = window.location.origin + window.location.pathname;
-  
-  const token = new URLSearchParams(window.location.search).get("token");
+
+  // Check if the token is in the URL or localStorage
+  let token = new URLSearchParams(window.location.search).get("token") || localStorage.getItem("token");
 
   const loginBtn = document.getElementById("loginBtn");
   const loginSection = document.getElementById("login-section");
@@ -49,6 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (data.msg_type === "authorize") {
         const loginid = data.authorize.loginid;
         userInfo.innerHTML = `✅ Logged in as <strong>${loginid}</strong>`;
+        localStorage.setItem("token", token);  // Store token in localStorage
         ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
       }
 
