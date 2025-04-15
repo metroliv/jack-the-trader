@@ -1,8 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   const APP_ID = "68037";
-  const REDIRECT_URL = window.location.origin + window.location.pathname; // Clean redirect
-  const urlParams = new URLSearchParams(window.location.search);
-  const token = urlParams.get("token1"); // Fix here: was 'token'
+  const REDIRECT_URL = window.location.href;
+  const token = new URLSearchParams(window.location.search).get("token");
 
   const loginBtn = document.getElementById("loginBtn");
   const loginSection = document.getElementById("login-section");
@@ -10,27 +9,63 @@ document.addEventListener("DOMContentLoaded", () => {
   const symbolSelector = document.getElementById("symbolSelector");
   const chartContainer = document.getElementById("tv_chart_container");
   const placeTradeBtn = document.getElementById("placeTradeBtn");
-  const balanceDisplay = document.getElementById("balanceDisplay");
 
-  if (!chartContainer || !symbolSelector || !loginBtn || !userInfo || !placeTradeBtn || !balanceDisplay) {
+  if (!chartContainer || !symbolSelector || !loginBtn || !userInfo || !placeTradeBtn) {
     console.error("Required DOM elements not found.");
     return;
   }
+
+  // Handling login flow
+  if (token) {
+    loginSection.classList.add("d-none");
+    userInfo.innerHTML = `<i class="fas fa-check-circle text-success"></i> Logged in via Deriv`;
+  }
+
+  loginBtn.addEventListener("click", () => {
+    // Redirect to Deriv's OAuth login page
+    const loginUrl = `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URL)}`;
+    window.location.href = loginUrl;
+  });
+
+  // Chart Setup
+  const chart = LightweightCharts.createChart(chartContainer, {
+    width: chartContainer.clientWidth,
+    height: 500,
+    layout: {
+      background: { color: "#ffffff" },
+      textColor: "#333",
+    },
+    grid: {
+      vertLines: { color: "#eee" },
+      horzLines: { color: "#eee" },
+    },
+    crosshair: {
+      mode: LightweightCharts.CrosshairMode.Normal,
+    },
+    priceScale: { borderColor: "#ccc" },
+    timeScale: { borderColor: "#ccc" },
+  });
+
+  const lineSeries = chart.addLineSeries();
 
   let ws;
   let tickSubscriptionId = null;
   let currentSymbol = symbolSelector.value;
 
   function startWebSocket(symbol) {
-    if (ws) ws.close();
+    if (ws) {
+      ws.close();
+    }
 
     ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`);
 
     ws.onopen = () => {
       console.log("✅ WebSocket connected");
+
       if (token) {
         ws.send(JSON.stringify({ authorize: token }));
       }
+
       ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
     };
 
@@ -42,25 +77,11 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      if (data.msg_type === "authorize") {
-        const loginid = data.authorize.loginid;
-        const currency = data.authorize.currency;
-        userInfo.innerHTML = `<i class="fas fa-user-circle text-primary"></i> ${loginid} (${currency})`;
-
-        // Fetch balance
-        ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
-        // You can also send more requests here like: `statement`, `portfolio`, `account_settings`, etc.
-      }
-
-      if (data.msg_type === "balance") {
-        const balance = data.balance.balance;
-        const currency = data.balance.currency;
-        balanceDisplay.innerHTML = `💰 Balance: ${balance} ${currency}`;
-      }
-
       if (data.msg_type === "tick") {
         const tick = data.tick;
         tickSubscriptionId = tick.id;
+
+        console.log("📈 Tick received:", tick);
 
         lineSeries.update({
           time: Math.floor(tick.epoch),
@@ -88,34 +109,10 @@ document.addEventListener("DOMContentLoaded", () => {
     startWebSocket(currentSymbol);
   });
 
-  // Login Button
-  loginBtn.addEventListener("click", () => {
-    const loginUrl = `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URL)}`;
-    window.location.href = loginUrl;
-  });
+  // Initialize chart with the default symbol
+  startWebSocket(currentSymbol);
 
-  // Chart Setup
-  const chart = LightweightCharts.createChart(chartContainer, {
-    width: chartContainer.clientWidth,
-    height: 500,
-    layout: {
-      background: { color: "#ffffff" },
-      textColor: "#333",
-    },
-    grid: {
-      vertLines: { color: "#eee" },
-      horzLines: { color: "#eee" },
-    },
-    crosshair: {
-      mode: LightweightCharts.CrosshairMode.Normal,
-    },
-    priceScale: { borderColor: "#ccc" },
-    timeScale: { borderColor: "#ccc" },
-  });
-
-  const lineSeries = chart.addLineSeries();
-
-  // Trade Example
+  // === Trade example (future use) ===
   function placeTradeExample() {
     if (!token) {
       alert("🚫 You must be logged in to place trades.");
@@ -139,11 +136,6 @@ document.addEventListener("DOMContentLoaded", () => {
     ws.send(JSON.stringify(contractRequest));
   }
 
+  // Place trade button event listener
   placeTradeBtn.addEventListener("click", placeTradeExample);
-
-  // On Load: If token exists, start WebSocket
-  if (token) {
-    loginSection.classList.add("d-none");
-    startWebSocket(currentSymbol);
-  }
 });
