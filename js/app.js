@@ -1,8 +1,9 @@
+
 document.addEventListener("DOMContentLoaded", () => {
   const APP_ID = "68037";
   const REDIRECT_URL = window.location.origin + window.location.pathname;
-  
-  const token = new URLSearchParams(window.location.search).get("token1");
+
+  const token = new URLSearchParams(window.location.search).get("token");
 
   const loginBtn = document.getElementById("loginBtn");
   const loginSection = document.getElementById("login-section");
@@ -29,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ws.onopen = () => {
       console.log("✅ WebSocket connected");
 
-      if (token) {
+      if (token && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ authorize: token }));
       }
 
@@ -47,8 +48,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (data.msg_type === "authorize") {
         const loginid = data.authorize.loginid;
         userInfo.innerHTML = `✅ Logged in as <strong>${loginid}</strong>`;
-
-        // Fetch balance after successful authorization
         ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
       }
 
@@ -82,16 +81,22 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
+  // Handle login UI visibility
   if (token) {
     loginSection.classList.add("d-none");
     userInfo.textContent = "🔄 Fetching user data...";
+  } else {
+    userInfo.textContent = "⚠️ Not logged in.";
+    loginSection.classList.remove("d-none");
   }
 
+  // Login button redirects to Deriv OAuth
   loginBtn.addEventListener("click", () => {
     const loginUrl = `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URL)}`;
     window.location.href = loginUrl;
   });
 
+  // Initialize TradingView Chart
   const chart = LightweightCharts.createChart(chartContainer, {
     width: chartContainer.clientWidth,
     height: 500,
@@ -113,10 +118,10 @@ document.addEventListener("DOMContentLoaded", () => {
     startWebSocket(currentSymbol);
   });
 
-  // Initialize chart and WS
+  // Start WebSocket connection and data fetching
   startWebSocket(currentSymbol);
 
-  // Demo Trade (placeholder)
+  // Simulated trade button
   placeTradeBtn.addEventListener("click", () => {
     if (!token) {
       alert("🚫 Please login to place a trade.");
@@ -137,6 +142,11 @@ document.addEventListener("DOMContentLoaded", () => {
       },
     };
 
-    ws.send(JSON.stringify(contractRequest));
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(contractRequest));
+    } else {
+      alert("❌ WebSocket not connected. Please wait...");
+    }
   });
 });
+
