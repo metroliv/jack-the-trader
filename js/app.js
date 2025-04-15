@@ -1,9 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   const APP_ID = "68037";
   const REDIRECT_URL = window.location.origin + window.location.pathname;
-
-  // Check if the token is in the URL or localStorage
-  let token = new URLSearchParams(window.location.search).get("token") || localStorage.getItem("token");
+  const token = new URLSearchParams(window.location.search).get("token1");
 
   const loginBtn = document.getElementById("loginBtn");
   const loginSection = document.getElementById("login-section");
@@ -12,20 +10,51 @@ document.addEventListener("DOMContentLoaded", () => {
   const symbolSelector = document.getElementById("symbolSelector");
   const chartContainer = document.getElementById("tv_chart_container");
   const placeTradeBtn = document.getElementById("placeTradeBtn");
-  const botsSection = document.getElementById("bots-section");
-  const featuresSection = document.getElementById("features-section");
-  const botsList = document.getElementById("bots-list");
 
-  if (!chartContainer || !symbolSelector || !loginBtn || !userInfo || !placeTradeBtn || !balanceInfo) {
-    console.error("Required DOM elements not found.");
-    return;
+  let ws, tickSubscriptionId = null;
+  let currentSymbol = symbolSelector.value;
+  let lineSeries, chart;
+
+  function initChart() {
+    chart = LightweightCharts.createChart(chartContainer, {
+      width: chartContainer.clientWidth,
+      height: 500,
+      layout: { background: { color: "#ffffff" }, textColor: "#333" },
+      grid: { vertLines: { color: "#eee" }, horzLines: { color: "#eee" } },
+      crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+      priceScale: { borderColor: "#ccc" },
+      timeScale: { borderColor: "#ccc" },
+    });
+    lineSeries = chart.addLineSeries();
   }
 
-  let ws;
-  let tickSubscriptionId = null;
-  let currentSymbol = symbolSelector.value;
+  function sendMessage(message) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(message));
+    }
+  }
 
-  // Function to start WebSocket connection
+  function authorizeAndSubscribe(symbol) {
+    if (token) sendMessage({ authorize: token });
+    subscribeToTicks(symbol);
+    subscribeToBalance();
+  }
+
+  function subscribeToTicks(symbol) {
+    sendMessage({ ticks: symbol, subscribe: 1 });
+  }
+
+  function unsubscribeTicks() {
+    if (tickSubscriptionId) {
+      sendMessage({ forget: tickSubscriptionId });
+      tickSubscriptionId = null;
+    }
+  }
+
+  function subscribeToBalance() {
+    if (token) sendMessage({ balance: 1, subscribe: 1 });
+  }
+
   function startWebSocket(symbol) {
     if (ws) ws.close();
 
@@ -33,131 +62,61 @@ document.addEventListener("DOMContentLoaded", () => {
 
     ws.onopen = () => {
       console.log("✅ WebSocket connected");
-
-      if (token && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ authorize: token }));
-      }
-
-      ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
+      authorizeAndSubscribe(symbol);
     };
 
-    ws.onmessage = (msg) => {
-      const data = JSON.parse(msg.data);
+    ws.onmessage = ({ data }) => {
+      const msg = JSON.parse(data);
+      if (msg.error) return console.error("❌", msg.error.message);
 
-      if (data.error) {
-        console.error("❌ Deriv API Error:", data.error.message);
-        return;
-      }
+      switch (msg.msg_type) {
+        case "authorize":
+          userInfo.innerHTML = `✅ Logged in as <strong>${msg.authorize.loginid}</strong>`;
+          break;
 
-      // Handle login response
-      if (data.msg_type === "authorize") {
-        const loginid = data.authorize.loginid;
-        userInfo.innerHTML = `✅ Logged in as <strong>${loginid}</strong>`;
-        localStorage.setItem("token", token);  // Store token in localStorage
-        ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
+        case "balance":
+          const { balance, currency } = msg.balance;
+          balanceInfo.innerHTML = `💰 Balance: <span class="text-dark">${currency} ${balance.toFixed(2)}</span>`;
+          break;
 
-        // Show user-specific sections
-        loginSection.classList.add("d-none");  // Hide login section
-        botsSection.classList.remove("d-none");  // Show bots section
-        featuresSection.classList.remove("d-none");  // Show other features section
-
-        // Simulate fetching user bots (this can be replaced with an API call)
-        fetchBots();
-      }
-
-      // Handle balance update
-      if (data.msg_type === "balance") {
-        const balance = data.balance;
-        balanceInfo.innerHTML = `💰 Balance: <span class="text-dark">${balance.currency} ${balance.balance.toFixed(2)}</span>`;
-      }
-
-      // Handle tick (price) updates
-      if (data.msg_type === "tick") {
-        const tick = data.tick;
-        tickSubscriptionId = tick.id;
-
-        lineSeries.update({
-          time: Math.floor(tick.epoch),
-          value: tick.quote,
-        });
-
-        document.getElementById("lastPrice").textContent = tick.quote.toFixed(2);
-        document.getElementById("marketName").textContent = currentSymbol;
-        document.getElementById("status").textContent = "Receiving Live Data...";
+        case "tick":
+          tickSubscriptionId = msg.tick.id;
+          const { quote, epoch } = msg.tick;
+          lineSeries.update({ time: epoch, value: quote });
+          document.getElementById("lastPrice").textContent = quote.toFixed(2);
+          document.getElementById("marketName").textContent = currentSymbol;
+          document.getElementById("status").textContent = "⚡ Live Data";
+          break;
       }
     };
 
-    ws.onerror = (e) => {
-      console.error("⚠️ WebSocket error:", e);
-    };
-
-    ws.onclose = () => {
-      console.warn("🔄 WebSocket closed. Reconnecting...");
-      setTimeout(() => startWebSocket(currentSymbol), 3000);
-    };
+    ws.onerror = (e) => console.error("⚠️ WS Error", e);
+    ws.onclose = () => setTimeout(() => startWebSocket(currentSymbol), 1500);
   }
 
-  // Function to simulate fetching bots (replace with actual data fetch)
-  function fetchBots() {
-    const bots = [
-      { id: 1, name: "Trading Bot 1", status: "Active" },
-      { id: 2, name: "Trading Bot 2", status: "Inactive" },
-    ];
-
-    botsList.innerHTML = bots
-      .map((bot) => `<li>${bot.name} - Status: ${bot.status}</li>`)
-      .join("");
-  }
-
-  // Handle login UI visibility
+  // Handle login redirect
   if (token) {
     loginSection.classList.add("d-none");
-    userInfo.textContent = "🔄 Fetching user data...";
-  } else {
-    userInfo.textContent = "⚠️ Not logged in.";
-    loginSection.classList.remove("d-none");
+    userInfo.textContent = "🔄 Logging in...";
   }
 
-  // Login button redirects to Deriv OAuth
   loginBtn.addEventListener("click", () => {
     const loginUrl = `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URL)}`;
     window.location.href = loginUrl;
   });
 
-  // Initialize TradingView Chart
-  const chart = LightweightCharts.createChart(chartContainer, {
-    width: chartContainer.clientWidth,
-    height: 500,
-    layout: { background: { color: "#ffffff" }, textColor: "#333" },
-    grid: { vertLines: { color: "#eee" }, horzLines: { color: "#eee" } },
-    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-    priceScale: { borderColor: "#ccc" },
-    timeScale: { borderColor: "#ccc" },
-  });
-
-  const lineSeries = chart.addLineSeries();
-
-  // Symbol selector change handler
+  // Symbol switching
   symbolSelector.addEventListener("change", () => {
-    const newSymbol = symbolSelector.value;
-    if (ws && tickSubscriptionId) {
-      ws.send(JSON.stringify({ forget: tickSubscriptionId }));
-    }
-    currentSymbol = newSymbol;
+    unsubscribeTicks();
+    currentSymbol = symbolSelector.value;
     startWebSocket(currentSymbol);
   });
 
-  // Start WebSocket connection and data fetching
-  startWebSocket(currentSymbol);
-
-  // Simulated trade button
+  // Trade button (mock)
   placeTradeBtn.addEventListener("click", () => {
-    if (!token) {
-      alert("🚫 Please login to place a trade.");
-      return;
-    }
+    if (!token) return alert("🚫 Login first to trade.");
 
-    const contractRequest = {
+    sendMessage({
       buy: 1,
       price: 1,
       parameters: {
@@ -169,12 +128,10 @@ document.addEventListener("DOMContentLoaded", () => {
         duration_unit: "m",
         symbol: currentSymbol,
       },
-    };
-
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(contractRequest));
-    } else {
-      alert("❌ WebSocket not connected. Please wait...");
-    }
+    });
   });
+
+  // Chart init & WebSocket start
+  initChart();
+  startWebSocket(currentSymbol);
 });

@@ -1,0 +1,71 @@
+// Initialize Deriv API
+const api = new DerivAPI({ app_id: '68037' });
+let chart;
+
+// Handle symbol selection
+const symbolSelector = document.getElementById('symbolSelector');
+let selectedSymbol = symbolSelector.value;
+
+symbolSelector.addEventListener('change', (event) => {
+  selectedSymbol = event.target.value;
+  updateChart(selectedSymbol);
+});
+
+// Handle chart type selection
+const chartTypeSelector = document.getElementById('chartTypeSelector');
+let chartType = chartTypeSelector.value;
+
+chartTypeSelector.addEventListener('change', (event) => {
+  chartType = event.target.value;
+  updateChart(selectedSymbol);
+});
+
+// Update the chart based on the symbol and chart type
+async function updateChart(symbol) {
+  const chartContainer = document.getElementById('tv_chart_container');
+
+  // Clear the chart container
+  chartContainer.innerHTML = '';
+
+  if (chartType === 'line') {
+    // Fetch the ticks data for the selected symbol
+    const ticks = api.ticks(symbol);
+    ticks.onUpdate().subscribe((data) => {
+      const chartData = data.map((tick) => ({
+        time: tick.time,
+        value: tick.quote
+      }));
+      
+      // Initialize line chart
+      chart = LightweightCharts.createChart(chartContainer, {
+        width: chartContainer.clientWidth,
+        height: chartContainer.clientHeight,
+      });
+
+      chart.addLineSeries().setData(chartData);
+    });
+  } else if (chartType === 'candlestick') {
+    // Fetch the candlestick data for the selected symbol
+    const candles = api.candles(symbol);
+    candles.onUpdate().subscribe((data) => {
+      const chartData = data.map((candle) => ({
+        time: candle.time,
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close
+      }));
+      
+      // Initialize candlestick chart
+      chart = LightweightCharts.createChart(chartContainer, {
+        width: chartContainer.clientWidth,
+        height: chartContainer.clientHeight,
+      });
+
+      chart.addCandlestickSeries().setData(chartData);
+    });
+  }
+}
+
+// Initialize with the first selection
+updateChart(selectedSymbol);
