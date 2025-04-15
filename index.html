@@ -6,15 +6,30 @@
   <title>Jack The Trader - Deriv Dashboard</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
   <style>
+    body {
+      background-color: #f8f9fa;
+    }
+
     #tv_chart_container {
       height: 500px;
       width: 100%;
+      border: 1px solid #ccc;
+      background-color: #fff;
+    }
+
+    .card-header {
+      font-weight: bold;
+    }
+
+    #contract-info {
+      font-size: 0.95rem;
     }
   </style>
 </head>
-<body class="bg-light">
+<body>
 
-  <div class="container mt-3">
+  <div class="container mt-4">
+    <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h2 class="text-primary">📊 Jack The Trader</h2>
       <div id="login-section">
@@ -22,32 +37,54 @@
       </div>
     </div>
 
-    <div id="user-info" class="alert alert-secondary">👤 You are browsing as guest</div>
+    <!-- User Info -->
+    <div id="user-info" class="alert alert-secondary">👤 You are browsing as a guest</div>
 
-    <!-- Symbol Selector -->
-    <div class="mb-3">
+    <!-- Symbol Selection -->
+    <div class="mb-4">
       <label for="symbolSelector" class="form-label">Select Market</label>
       <select id="symbolSelector" class="form-select">
-        <option value="R_100">R_100</option>
-        <option value="1HZ100V">1HZ100V</option>
-        <option value="R_75">R_75</option>
-        <option value="R_50">R_50</option>
+        <option value="R_100">Volatility 100 Index</option>
+        <option value="R_75">Volatility 75 Index</option>
+        <option value="R_50">Volatility 50 Index</option>
+        <option value="1HZ100V">1HZ Volatility Index</option>
       </select>
     </div>
 
-    <!-- TradingView Chart -->
+    <!-- Chart Section -->
     <div class="card mb-4">
-      <div class="card-header bg-dark text-white">📈 Live Chart (Powered by TradingView)</div>
+      <div class="card-header bg-dark text-white">📈 Live Chart (Powered by Deriv API)</div>
       <div class="card-body">
         <div id="tv_chart_container"></div>
       </div>
     </div>
 
-    <!-- Future Tabs for Digits, Rise/Fall, Multipliers, Bots -->
-    <div class="alert alert-info">Coming soon: Digits, Rise/Fall, Bots, Accumulators...</div>
+    <!-- Contract Info Section -->
+    <div class="card mb-4">
+      <div class="card-header">📝 Contract Details</div>
+      <div class="card-body" id="contract-info">
+        <p><strong>Market:</strong> <span id="marketName">--</span></p>
+        <p><strong>Contract Type:</strong> <span id="contractType">--</span></p>
+        <p><strong>Last Price:</strong> <span id="lastPrice">--</span></p>
+        <p><strong>Status:</strong> <span id="status">Waiting for selection...</span></p>
+      </div>
+    </div>
+
+    <!-- Tabs Placeholder -->
+    <div class="card mb-5">
+      <div class="card-header">🧪 Coming Features</div>
+      <div class="card-body">
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item">Digits Contracts</li>
+          <li class="list-group-item">Rise / Fall Contracts</li>
+          <li class="list-group-item">Multipliers</li>
+          <li class="list-group-item">Bot Integration</li>
+        </ul>
+      </div>
+    </div>
   </div>
 
-  <!-- Scripts -->
+  <!-- JavaScript Dependencies -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
   <script src="js/app.js"></script>
