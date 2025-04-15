@@ -4,197 +4,159 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Jack The Trader - Powered by Deriv</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
   <style>
     #tv_chart_container {
-      height: 500px;
-      border: 1px solid #ddd;
-      border-radius: 10px;
+      height: 400px;
+      border: 1px solid #ccc;
+      margin-bottom: 20px;
     }
-    .digit-box {
-      font-size: 2rem;
-      font-weight: bold;
+    .trade-buttons button {
+      margin-right: 10px;
     }
   </style>
 </head>
 <body class="bg-light">
-  <div class="container mt-5">
-    <h1 class="text-center text-primary mb-4">📊 Jack The Trader</h1>
 
-    <div id="login-section" class="text-center">
-      <button class="btn btn-success btn-lg" id="loginBtn">🔐 Login with Deriv</button>
+  <div class="container mt-4">
+    <h1 class="text-center text-primary mb-4">📊 Jack The Trader <small class="text-muted fs-6">Powered by Deriv</small></h1>
+
+    <!-- Chart Area -->
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <label class="form-label">Market</label>
+        <select id="symbolSelector" class="form-select">
+          <option value="R_10">Volatility 10 Index</option>
+          <option value="R_25">Volatility 25 Index</option>
+          <option value="R_50">Volatility 50 Index</option>
+          <option value="R_75">Volatility 75 Index</option>
+          <option value="R_100" selected>Volatility 100 Index</option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Contract Type</label>
+        <select id="contractTypeSelector" class="form-select">
+          <option value="rise_fall">📈 Rise/Fall</option>
+          <option value="digits">🔢 Digits (Even/Odd)</option>
+          <option value="accumulators">➕ Accumulators</option>
+        </select>
+      </div>
     </div>
 
-    <div id="dashboard" class="d-none mt-4">
-      <div class="alert alert-info" id="user-info">Please login to continue...</div>
+    <div id="tv_chart_container"></div>
 
-      <div class="row mb-3">
-        <div class="col-md-4">
-          <label for="symbolSelector" class="form-label">Select Market:</label>
-          <select id="symbolSelector" class="form-select">
-            <option value="R_10">Volatility 10 Index</option>
-            <option value="R_25">Volatility 25 Index</option>
-            <option value="R_50">Volatility 50 Index</option>
-            <option value="R_75">Volatility 75 Index</option>
-            <option value="R_100" selected>Volatility 100 Index</option>
-          </select>
-        </div>
-        <div class="col-md-4">
-          <label for="contractTypeSelector" class="form-label">Contract Type:</label>
-          <select id="contractTypeSelector" class="form-select">
-            <option value="rise_fall">Rise/Fall</option>
-            <option value="digits">Digits (Even/Odd)</option>
-            <option value="accumulators">Accumulators</option>
-          </select>
-        </div>
-        <div class="col-md-2">
-          <label for="chartTypeSelector" class="form-label">Chart Type:</label>
-          <select id="chartTypeSelector" class="form-select">
-            <option value="line">Line</option>
-            <option value="candlestick">Candlestick</option>
-          </select>
-        </div>
-        <div class="col-md-2">
-          <label for="candleIntervalSelector" class="form-label">Interval:</label>
-          <select id="candleIntervalSelector" class="form-select">
-            <option value="60">1m</option>
-            <option value="300">5m</option>
-            <option value="900">15m</option>
-            <option value="3600">1h</option>
-          </select>
+    <!-- Contract Preview Section -->
+    <div id="contractPreview" class="card p-3 mb-3">
+      <h5>📋 Contract Info</h5>
+      <p><strong>Type:</strong> <span id="contractType">Rise/Fall</span></p>
+      <p><strong>Market:</strong> <span id="marketName">Volatility 100 Index</span></p>
+      <p><strong>Indicators:</strong> Candles, Volume</p>
+    </div>
+
+    <!-- Trading Actions -->
+    <div class="text-center trade-buttons mb-3">
+      <button class="btn btn-success" onclick="startTrade()">Start Trade</button>
+      <button class="btn btn-outline-secondary" onclick="showSettings()">⚙️ Settings</button>
+      <button class="btn btn-outline-info" onclick="showIndicators()">📈 Indicators</button>
+    </div>
+
+    <!-- Login Modal (shown only when needed) -->
+    <div id="loginModal" class="modal fade" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">🔐 Login Required</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <p>You need to login to start trading or view your balance.</p>
+            <button class="btn btn-primary" onclick="login()">Login with Deriv</button>
+          </div>
         </div>
       </div>
-
-      <div id="tv_chart_container" class="mb-3"></div>
-
-      <div id="digitOutput" class="text-center digit-box text-danger"></div>
     </div>
   </div>
 
+  <!-- Bootstrap Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const APP_ID = "68037";
-      const REDIRECT_URL = window.location.href;
-      const token = new URLSearchParams(window.location.search).get("token");
+    let chart;
+    let isLoggedIn = false;
 
-      const loginBtn = document.getElementById("loginBtn");
-      const loginSection = document.getElementById("login-section");
-      const userInfo = document.getElementById("user-info");
-      const dashboard = document.getElementById("dashboard");
-      const symbolSelector = document.getElementById("symbolSelector");
-      const contractTypeSelector = document.getElementById("contractTypeSelector");
-      const chartTypeSelector = document.getElementById("chartTypeSelector");
-      const candleIntervalSelector = document.getElementById("candleIntervalSelector");
-      const digitOutput = document.getElementById("digitOutput");
-      const chartContainer = document.getElementById("tv_chart_container");
-
-      let ws, chart, series, currentSymbol = symbolSelector.value, interval = "60";
-      let tickSubscriptionId, candleSubscriptionId;
-
-      if (token) {
-        loginSection.classList.add("d-none");
-        dashboard.classList.remove("d-none");
-        userInfo.textContent = "✅ Logged in via Deriv";
-      }
-
-      loginBtn.addEventListener("click", () => {
-        const loginUrl = `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URL)}`;
-        window.location.href = loginUrl;
+    function createChart() {
+      const chartElement = document.getElementById("tv_chart_container");
+      chart = LightweightCharts.createChart(chartElement, {
+        width: chartElement.clientWidth,
+        height: 400,
+        layout: {
+          backgroundColor: '#fff',
+          textColor: '#000',
+        },
+        grid: {
+          vertLines: { color: '#eee' },
+          horzLines: { color: '#eee' },
+        },
+        crosshair: { mode: 0 },
+        rightPriceScale: { visible: true },
+        timeScale: { borderColor: '#aaa' },
       });
 
-      function initChart() {
-        chartContainer.innerHTML = "";
-        chart = LightweightCharts.createChart(chartContainer, {
-          width: chartContainer.clientWidth,
-          height: 500,
-          layout: { background: { color: '#fff' }, textColor: '#000' },
-          grid: { vertLines: { color: '#eee' }, horzLines: { color: '#eee' } },
-          crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-          priceScale: { borderColor: '#ccc' },
-          timeScale: { borderColor: '#ccc' }
-        });
+      const candleSeries = chart.addCandlestickSeries();
+      const volumeSeries = chart.addHistogramSeries({ color: '#26a69a', priceFormat: { type: 'volume' }, priceScaleId: '' });
 
-        const chartType = chartTypeSelector.value;
-        series = chartType === "candlestick"
-          ? chart.addCandlestickSeries()
-          : chart.addLineSeries();
-      }
-
-      function connectWebSocket() {
-        ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`);
-        ws.onopen = () => {
-          if (token) ws.send(JSON.stringify({ authorize: token }));
-          subscribeToMarket(currentSymbol);
+      // Dummy data
+      const dummyData = [...Array(50)].map((_, i) => {
+        const base = 100 + i;
+        return {
+          time: Math.floor(Date.now() / 1000) - (50 - i) * 60,
+          open: base,
+          high: base + Math.random() * 5,
+          low: base - Math.random() * 5,
+          close: base + Math.random() * 3,
+          value: Math.floor(Math.random() * 100),
         };
-        ws.onmessage = (msg) => {
-          const data = JSON.parse(msg.data);
+      });
 
-          if (data.msg_type === "tick") {
-            const tick = data.tick;
-            tickSubscriptionId = tick.id;
+      candleSeries.setData(dummyData.map(({ time, open, high, low, close }) => ({ time, open, high, low, close })));
+      volumeSeries.setData(dummyData.map(({ time, value }) => ({ time, value })));
+    }
 
-            if (contractTypeSelector.value === "digits") {
-              const lastDigit = tick.quote.toString().slice(-1);
-              const isEven = parseInt(lastDigit) % 2 === 0;
-              digitOutput.textContent = `Last Digit: ${lastDigit} (${isEven ? 'Even' : 'Odd'})`;
-            }
-
-            if (chartTypeSelector.value === "line") {
-              series.update({ time: tick.epoch, value: tick.quote });
-            }
-          }
-
-          if (data.msg_type === "ohlc") {
-            const c = data.ohlc;
-            series.update({
-              time: c.open_time,
-              open: parseFloat(c.open),
-              high: parseFloat(c.high),
-              low: parseFloat(c.low),
-              close: parseFloat(c.close),
-            });
-          }
-        };
-
-        ws.onerror = (e) => console.error("WebSocket Error:", e);
-        ws.onclose = () => console.warn("WebSocket closed.");
+    function startTrade() {
+      if (!isLoggedIn) {
+        const modal = new bootstrap.Modal(document.getElementById("loginModal"));
+        modal.show();
+        return;
       }
 
-      function subscribeToMarket(symbol) {
-        const contract = contractTypeSelector.value;
-        const chartType = chartTypeSelector.value;
-        const granularity = parseInt(candleIntervalSelector.value);
+      alert("🚀 Trade started!");
+    }
 
-        if (ws.readyState === WebSocket.OPEN) {
-          if (tickSubscriptionId) ws.send(JSON.stringify({ forget: tickSubscriptionId }));
-          if (candleSubscriptionId) ws.send(JSON.stringify({ forget: candleSubscriptionId }));
-        }
+    function login() {
+      isLoggedIn = true;
+      const modal = bootstrap.Modal.getInstance(document.getElementById("loginModal"));
+      modal.hide();
+      alert("✅ Logged in successfully.");
+    }
 
-        if (chartType === "line" || contract === "digits") {
-          ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
-        } else {
-          ws.send(JSON.stringify({ ticks_history: symbol, style: "candles", adjust_start_time: 1, count: 100, granularity, subscribe: 1 }));
-        }
-      }
+    function showIndicators() {
+      alert("📊 Showing indicators (candles, volume, etc.)");
+    }
 
-      function updateChart() {
-        currentSymbol = symbolSelector.value;
-        interval = candleIntervalSelector.value;
-        initChart();
-        if (ws) ws.close();
-        connectWebSocket();
-      }
+    function showSettings() {
+      alert("⚙️ Settings panel will appear here.");
+    }
 
-      // Event Listeners
-      symbolSelector.addEventListener("change", updateChart);
-      contractTypeSelector.addEventListener("change", updateChart);
-      chartTypeSelector.addEventListener("change", updateChart);
-      candleIntervalSelector.addEventListener("change", updateChart);
-
-      initChart();
-      if (token) connectWebSocket();
+    document.getElementById("symbolSelector").addEventListener("change", function () {
+      document.getElementById("marketName").textContent = this.options[this.selectedIndex].text;
     });
+
+    document.getElementById("contractTypeSelector").addEventListener("change", function () {
+      document.getElementById("contractType").textContent = this.options[this.selectedIndex].text;
+    });
+
+    window.addEventListener("load", createChart);
   </script>
 </body>
 </html>
