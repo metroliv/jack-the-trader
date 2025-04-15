@@ -1,61 +1,28 @@
 document.addEventListener("DOMContentLoaded", () => {
   const APP_ID = "68037";
-  const REDIRECT_URL = window.location.href;
-  const token = new URLSearchParams(window.location.search).get("token");
+  const REDIRECT_URL = window.location.origin + window.location.pathname;
+  
+  const token = new URLSearchParams(window.location.search).get("token1");
 
   const loginBtn = document.getElementById("loginBtn");
   const loginSection = document.getElementById("login-section");
   const userInfo = document.getElementById("user-info");
+  const balanceInfo = document.getElementById("balance-info");
   const symbolSelector = document.getElementById("symbolSelector");
   const chartContainer = document.getElementById("tv_chart_container");
   const placeTradeBtn = document.getElementById("placeTradeBtn");
 
-  if (!chartContainer || !symbolSelector || !loginBtn || !userInfo || !placeTradeBtn) {
+  if (!chartContainer || !symbolSelector || !loginBtn || !userInfo || !placeTradeBtn || !balanceInfo) {
     console.error("Required DOM elements not found.");
     return;
   }
-
-  // Handling login flow
-  if (token) {
-    loginSection.classList.add("d-none");
-    userInfo.innerHTML = `<i class="fas fa-check-circle text-success"></i> Logged in via Deriv`;
-  }
-
-  loginBtn.addEventListener("click", () => {
-    // Redirect to Deriv's OAuth login page
-    const loginUrl = `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URL)}`;
-    window.location.href = loginUrl;
-  });
-
-  // Chart Setup
-  const chart = LightweightCharts.createChart(chartContainer, {
-    width: chartContainer.clientWidth,
-    height: 500,
-    layout: {
-      background: { color: "#ffffff" },
-      textColor: "#333",
-    },
-    grid: {
-      vertLines: { color: "#eee" },
-      horzLines: { color: "#eee" },
-    },
-    crosshair: {
-      mode: LightweightCharts.CrosshairMode.Normal,
-    },
-    priceScale: { borderColor: "#ccc" },
-    timeScale: { borderColor: "#ccc" },
-  });
-
-  const lineSeries = chart.addLineSeries();
 
   let ws;
   let tickSubscriptionId = null;
   let currentSymbol = symbolSelector.value;
 
   function startWebSocket(symbol) {
-    if (ws) {
-      ws.close();
-    }
+    if (ws) ws.close();
 
     ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`);
 
@@ -77,16 +44,31 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      if (data.msg_type === "authorize") {
+        const loginid = data.authorize.loginid;
+        userInfo.innerHTML = `✅ Logged in as <strong>${loginid}</strong>`;
+
+        // Fetch balance after successful authorization
+        ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
+      }
+
+      if (data.msg_type === "balance") {
+        const balance = data.balance;
+        balanceInfo.innerHTML = `💰 Balance: <span class="text-dark">${balance.currency} ${balance.balance.toFixed(2)}</span>`;
+      }
+
       if (data.msg_type === "tick") {
         const tick = data.tick;
         tickSubscriptionId = tick.id;
-
-        console.log("📈 Tick received:", tick);
 
         lineSeries.update({
           time: Math.floor(tick.epoch),
           value: tick.quote,
         });
+
+        document.getElementById("lastPrice").textContent = tick.quote.toFixed(2);
+        document.getElementById("marketName").textContent = currentSymbol;
+        document.getElementById("status").textContent = "Receiving Live Data...";
       }
     };
 
@@ -100,6 +82,28 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
+  if (token) {
+    loginSection.classList.add("d-none");
+    userInfo.textContent = "🔄 Fetching user data...";
+  }
+
+  loginBtn.addEventListener("click", () => {
+    const loginUrl = `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URL)}`;
+    window.location.href = loginUrl;
+  });
+
+  const chart = LightweightCharts.createChart(chartContainer, {
+    width: chartContainer.clientWidth,
+    height: 500,
+    layout: { background: { color: "#ffffff" }, textColor: "#333" },
+    grid: { vertLines: { color: "#eee" }, horzLines: { color: "#eee" } },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    priceScale: { borderColor: "#ccc" },
+    timeScale: { borderColor: "#ccc" },
+  });
+
+  const lineSeries = chart.addLineSeries();
+
   symbolSelector.addEventListener("change", () => {
     const newSymbol = symbolSelector.value;
     if (ws && tickSubscriptionId) {
@@ -109,13 +113,13 @@ document.addEventListener("DOMContentLoaded", () => {
     startWebSocket(currentSymbol);
   });
 
-  // Initialize chart with the default symbol
+  // Initialize chart and WS
   startWebSocket(currentSymbol);
 
-  // === Trade example (future use) ===
-  function placeTradeExample() {
+  // Demo Trade (placeholder)
+  placeTradeBtn.addEventListener("click", () => {
     if (!token) {
-      alert("🚫 You must be logged in to place trades.");
+      alert("🚫 Please login to place a trade.");
       return;
     }
 
@@ -134,8 +138,5 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     ws.send(JSON.stringify(contractRequest));
-  }
-
-  // Place trade button event listener
-  placeTradeBtn.addEventListener("click", placeTradeExample);
+  });
 });
