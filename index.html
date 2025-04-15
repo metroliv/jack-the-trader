@@ -1,48 +1,205 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trading Platform</title>
-  <link rel="stylesheet" href="styles.css"> <!-- Add your styles -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Jack The Trader - Deriv Dashboard</title>
+
+  <!-- FontAwesome & Bootstrap -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+
+  <!-- Optional Custom CSS -->
+  <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    #tv_chart_container {
+      height: 500px;
+      width: 100%;
+      border: 1px solid #ccc;
+      background-color: #fff;
+    }
+    .card-header {
+      font-weight: bold;
+    }
+    #contract-info {
+      font-size: 0.95rem;
+    }
+    #balance-info {
+      font-weight: bold;
+      color: green;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    @media (max-width: 768px) {
+      .header-right {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
 </head>
 <body>
-  <!-- Login Section -->
-  <div id="login-section">
-    <button id="loginBtn">Login with Deriv</button>
-  </div>
+  <div class="container mt-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="text-primary">📊 Jack The Trader</h2>
+      <div class="header-right">
+        <div id="balance-info">💰 Balance: --</div>
+        <div id="login-section">
+          <button class="btn btn-success" id="loginBtn">🔐 Login with Deriv</button>
+        </div>
+      </div>
+    </div>
 
-  <!-- User Info and Balance -->
-  <div id="user-info"></div>
-  <div id="balance-info"></div>
+    <!-- User Info -->
+    <div id="user-info" class="alert alert-secondary">👤 You are browsing as a guest</div>
 
-  <!-- Trading Chart -->
-  <div id="tv_chart_container"></div>
+    <!-- Symbol Selection -->
+    <div class="mb-4">
+      <label for="symbolSelector" class="form-label">Select Market</label>
+      <select id="symbolSelector" class="form-select">
+        <option value="R_100">Volatility 100 Index</option>
+        <option value="R_75">Volatility 75 Index</option>
+        <option value="R_50">Volatility 50 Index</option>
+        <option value="1HZ100V">1HZ Volatility Index</option>
+      </select>
+    </div>
 
-  <!-- Symbol Selector and Place Trade -->
-  <select id="symbolSelector">
-    <!-- Add trading symbols here -->
-    <option value="USDJPY">USD/JPY</option>
-    <option value="EURUSD">EUR/USD</option>
-    <!-- More symbols can go here -->
-  </select>
-  <button id="placeTradeBtn">Place Trade</button>
+    <!-- Chart Section -->
+    <div class="card mb-4">
+      <div class="card-header bg-dark text-white">📈 Live Candlestick Chart</div>
+      <div class="card-body">
+        <div id="tv_chart_container"></div>
+      </div>
+    </div>
 
-  <!-- Bots Section (Visible after login) -->
-  <div id="bots-section" class="d-none">
-    <h3>Your Bots</h3>
-    <ul id="bots-list">
-      <!-- Bots will be dynamically listed here -->
-    </ul>
-  </div>
+    <!-- Contract Info Section -->
+    <div class="card mb-4">
+      <div class="card-header">📝 Contract Details</div>
+      <div class="card-body" id="contract-info">
+        <p><strong>Market:</strong> <span id="marketName">--</span></p>
+        <p><strong>Contract Type:</strong> <span id="contractType">CALL</span></p>
+        <p><strong>Last Price:</strong> <span id="lastPrice">--</span></p>
+        <p><strong>Status:</strong> <span id="status">Waiting for selection...</span></p>
+      </div>
+      <button class="btn btn-primary m-3" id="placeTradeBtn">💼 Place Demo Trade</button>
+    </div>
 
-  <!-- Placeholder for other user features -->
-  <div id="features-section" class="d-none">
-    <h3>Other Features</h3>
-    <p>Explore other options available to you!</p>
+    <!-- Tabs Placeholder -->
+    <div class="card mb-5">
+      <div class="card-header">🧪 Coming Features</div>
+      <div class="card-body">
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item">Digits Contracts</li>
+          <li class="list-group-item">Rise / Fall Contracts</li>
+          <li class="list-group-item">Multipliers</li>
+          <li class="list-group-item">Bot Integration</li>
+        </ul>
+      </div>
+    </div>
   </div>
 
   <!-- Scripts -->
-  <script src="app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+  <script src="js/app.js"></script>
+
+  <script>
+    // Mockup of user login process
+    document.getElementById('loginBtn').addEventListener('click', function() {
+      document.getElementById('user-info').innerHTML = '👤 You are logged in as John Doe';
+      document.getElementById('login-section').innerHTML = '';
+      document.getElementById('balance-info').innerHTML = '💰 Balance: $1000';
+      // Mock for enabling features after login
+      document.querySelector('.card-body').style.display = 'block';
+      document.getElementById('placeTradeBtn').style.display = 'block';
+    });
+
+    // Initially hide contract details and place trade button
+    document.querySelector('.card-body').style.display = 'none';
+    document.getElementById('placeTradeBtn').style.display = 'none';
+
+    // Setup Moving Candlestick Chart
+    const chart = LightweightCharts.createChart(document.getElementById('tv_chart_container'), {
+      width: window.innerWidth - 20,
+      height: 500,
+      layout: {
+        backgroundColor: '#fff',
+        textColor: '#333',
+      },
+      grid: {
+        vertLines: { color: '#eee' },
+        horzLines: { color: '#eee' },
+      },
+      crosshair: {
+        vertLine: { color: 'rgba(0,204,255,0.4)' },
+        horzLine: { color: 'rgba(0,204,255,0.4)' },
+      },
+      priceScale: { borderColor: '#ccc' },
+    });
+
+    const candleSeries = chart.addCandlestickSeries();
+
+    // Replace with your API endpoint to fetch live data
+    const fetchLiveData = async (symbol) => {
+      const url = `https://api.example.com/candles?symbol=${symbol}&count=1`; // Replace with your actual API URL
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        return data.candles; // Assuming API returns 'candles' in this format
+      } catch (error) {
+        console.error('Error fetching live data:', error);
+        return [];
+      }
+    };
+
+    // Function to update chart with new candles
+    const updateChart = (newCandles) => {
+      const formattedCandles = newCandles.map(candle => ({
+        time: Math.floor(new Date(candle.timestamp).getTime() / 1000),
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close
+      }));
+
+      // Add new candle to the series, removing the old one if there are too many
+      const currentData = candleSeries.getData();
+      currentData.push(formattedCandles[0]); // Add new candle
+
+      // Keep the chart within a reasonable number of candles (e.g., show only the last 100)
+      if (currentData.length > 100) {
+        currentData.shift(); // Remove the oldest candle
+      }
+
+      candleSeries.setData(currentData); // Update the chart
+    };
+
+    // Function to fetch and update live data periodically
+    const symbolSelector = document.getElementById('symbolSelector');
+    symbolSelector.addEventListener('change', async () => {
+      const selectedSymbol = symbolSelector.value;
+      setInterval(async () => {
+        const newCandles = await fetchLiveData(selectedSymbol);
+        if (newCandles.length > 0) {
+          updateChart(newCandles);
+        }
+      }, 10000); // Update every 10 seconds
+    });
+
+    // Fetch initial data and set chart
+    (async () => {
+      const initialSymbol = symbolSelector.value;
+      const initialCandles = await fetchLiveData(initialSymbol);
+      updateChart(initialCandles);
+    })();
+  </script>
 </body>
 </html>
