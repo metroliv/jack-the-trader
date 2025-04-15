@@ -1,9 +1,176 @@
+/* Reset + Base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 body {
-    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f1f4f9;
+  color: #212529;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+h2 {
+  font-weight: 700;
+  color: #0d6efd;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Header & Login */
+#login-section {
+  display: flex;
+  align-items: center;
+}
+
+#loginBtn {
+  font-weight: bold;
+  padding: 10px 18px;
+  transition: all 0.3s ease-in-out;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#loginBtn:hover {
+  background-color: #157347;
+  box-shadow: 0 6px 14px rgba(0, 128, 0, 0.25);
+  transform: scale(1.03);
+}
+
+/* User Info */
+#user-info {
+  background-color: #eaf3ff;
+  border-left: 5px solid #0d6efd;
+  color: #0a58ca;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 6px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Symbol Selector */
+#symbolSelector {
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 0.95rem;
+}
+
+/* Chart Container */
+#tv_chart_container {
+  height: 500px;
+  width: 100%;
+  background-color: #ffffff;
+  border-radius: 10px;
+  border: 2px dashed #ced4da;
+  transition: border 0.3s ease;
+}
+
+#tv_chart_container:hover {
+  border-color: #0d6efd;
+}
+
+/* Cards */
+.card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.card-header {
+  background: #e9ecef;
+  font-weight: 600;
+  font-size: 1.05rem;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-body {
+  padding: 20px;
+}
+
+/* Contract Info */
+#contract-info p {
+  margin: 10px 0;
+  font-size: 0.93rem;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #eee;
+}
+
+#contract-info strong {
+  color: #0d6efd;
+}
+
+/* Coming Features */
+.list-group-item {
+  background-color: #fdfdfd;
+  border: none;
+  padding: 14px 18px;
+  font-weight: 500;
+  transition: background 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.list-group-item:hover {
+  background-color: #edf4ff;
+  color: #0d6efd;
+  cursor: pointer;
+}
+
+/* Icons styling */
+.fa-chart-line, .fa-user, .fa-gear, .fa-rocket, .fa-arrow-up-right-dots {
+  color: #0d6efd;
+}
+
+/* Responsive Mobile Design */
+@media (max-width: 768px) {
+  h2 {
+    font-size: 1.4rem;
+    justify-content: center;
+    text-align: center;
   }
-  
-  #price {
-    font-weight: bold;
-    color: #28a745;
+
+  #login-section {
+    justify-content: center;
+    margin-top: 10px;
   }
-  
+
+  #user-info {
+    font-size: 0.85rem;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  #loginBtn {
+    font-size: 0.85rem;
+    padding: 8px 12px;
+  }
+
+  .card-body {
+    padding: 16px;
+  }
+
+  #tv_chart_container {
+    height: 400px;
+  }
+}
