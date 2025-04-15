@@ -1,4 +1,3 @@
-
 document.addEventListener("DOMContentLoaded", () => {
   const APP_ID = "68037";
   const REDIRECT_URL = window.location.origin + window.location.pathname;
@@ -22,6 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let tickSubscriptionId = null;
   let currentSymbol = symbolSelector.value;
 
+  // Function to start WebSocket connection
   function startWebSocket(symbol) {
     if (ws) ws.close();
 
@@ -45,17 +45,20 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      // Handle login response
       if (data.msg_type === "authorize") {
         const loginid = data.authorize.loginid;
         userInfo.innerHTML = `✅ Logged in as <strong>${loginid}</strong>`;
         ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
       }
 
+      // Handle balance update
       if (data.msg_type === "balance") {
         const balance = data.balance;
         balanceInfo.innerHTML = `💰 Balance: <span class="text-dark">${balance.currency} ${balance.balance.toFixed(2)}</span>`;
       }
 
+      // Handle tick (price) updates
       if (data.msg_type === "tick") {
         const tick = data.tick;
         tickSubscriptionId = tick.id;
@@ -109,6 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const lineSeries = chart.addLineSeries();
 
+  // Symbol selector change handler
   symbolSelector.addEventListener("change", () => {
     const newSymbol = symbolSelector.value;
     if (ws && tickSubscriptionId) {
@@ -149,4 +153,3 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
-
