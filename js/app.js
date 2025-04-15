@@ -12,6 +12,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const symbolSelector = document.getElementById("symbolSelector");
   const chartContainer = document.getElementById("tv_chart_container");
   const placeTradeBtn = document.getElementById("placeTradeBtn");
+  const botsSection = document.getElementById("bots-section");
+  const featuresSection = document.getElementById("features-section");
+  const botsList = document.getElementById("bots-list");
 
   if (!chartContainer || !symbolSelector || !loginBtn || !userInfo || !placeTradeBtn || !balanceInfo) {
     console.error("Required DOM elements not found.");
@@ -52,6 +55,14 @@ document.addEventListener("DOMContentLoaded", () => {
         userInfo.innerHTML = `✅ Logged in as <strong>${loginid}</strong>`;
         localStorage.setItem("token", token);  // Store token in localStorage
         ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
+
+        // Show user-specific sections
+        loginSection.classList.add("d-none");  // Hide login section
+        botsSection.classList.remove("d-none");  // Show bots section
+        featuresSection.classList.remove("d-none");  // Show other features section
+
+        // Simulate fetching user bots (this can be replaced with an API call)
+        fetchBots();
       }
 
       // Handle balance update
@@ -84,6 +95,18 @@ document.addEventListener("DOMContentLoaded", () => {
       console.warn("🔄 WebSocket closed. Reconnecting...");
       setTimeout(() => startWebSocket(currentSymbol), 3000);
     };
+  }
+
+  // Function to simulate fetching bots (replace with actual data fetch)
+  function fetchBots() {
+    const bots = [
+      { id: 1, name: "Trading Bot 1", status: "Active" },
+      { id: 2, name: "Trading Bot 2", status: "Inactive" },
+    ];
+
+    botsList.innerHTML = bots
+      .map((bot) => `<li>${bot.name} - Status: ${bot.status}</li>`)
+      .join("");
   }
 
   // Handle login UI visibility
