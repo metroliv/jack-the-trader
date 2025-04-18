@@ -1,222 +1,257 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Deriv Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-      body {
-    font-family: Arial, sans-serif;
-    background: #f0f2f5;
-    margin: 0;
-    transition: background 0.3s, color 0.3s;
-}
-.main-layout {
-    display: flex;
-    height: 100vh;
-}
-.sidebar {
-    width: 220px;
-    background: #2a3052;
-    color: white;
-    padding: 20px;
-}
-.sidebar button {
-    display: block;
-    width: 100%;
-    margin-bottom: 10px;
-    background: #3e4475;
-}
-.content {
-    flex: 1;
-    padding: 20px;
-}
-.chat-feed {
-    width: 250px;
-    background: #fff;
-    border-left: 1px solid #ccc;
-    padding: 15px;
-    overflow-y: auto;
-}
-#chat-box {
-    height: 90%;
-    overflow-y: auto;
-}
-.dark {
-    background: #1e1e2f;
-    color: white;
-}
-.dark .sidebar {
-    background: #141421;
-}
-.dark .chat-feed {
-    background: #2c2c3e;
-    color: white;
-}
-canvas {
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 0 10px #ccc;
-}
- }
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            transition: background 0.3s, color 0.3s;
+        }
+        .main-layout {
+            display: flex;
+            height: 100vh;
+            flex-direction: row;
+            justify-content: space-between;
+        }
+        .sidebar {
+            width: 220px;
+            background: #2a3052;
+            color: white;
+            padding: 20px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar button {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+            background: #3e4475;
+            border: none;
+            padding: 10px;
+            color: white;
+            cursor: pointer;
+        }
+        .sidebar button:hover {
+            background: #565d7e;
+        }
+        .content {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            margin-bottom: 20px;
+        }
+        .chat-feed {
+            width: 300px;
+            background: #fff;
+            border-left: 1px solid #ccc;
+            padding: 15px;
+            overflow-y: auto;
+            height: 100%;
+            position: relative;
+        }
+        #chat-box {
+            height: 90%;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+        .dark {
+            background: #1e1e2f;
+            color: white;
+        }
+        .dark .sidebar {
+            background: #141421;
+        }
+        .dark .chat-feed {
+            background: #2c2c3e;
+            color: white;
+        }
+        canvas {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px #ccc;
+        }
     </style>
 </head>
 <body>
-  <div class="main-layout">
-      <!-- Sidebar -->
-      <div class="sidebar">
-          <h3>Deriv Panel</h3>
-          <button onclick="login()">🔐 Login</button>
-          <button onclick="toggleTheme()">🌗 Toggle Theme</button>
-          <button onclick="logout()">🚪 Logout</button>
-          <br><br>
-          <select id="market-select" onchange="changeMarket(this.value)">
-              <option value="">Select Market</option>
-          </select>
-          <p><strong>Live Price:</strong> <span id="live-price">-</span></p>
-      </div>
-  
-      <!-- Content -->
-      <div class="content">
-          <div class="header">
-              <h2>Deriv Trading Dashboard</h2>
-              <p id="user-info">Not logged in.</p>
-          </div>
-          <canvas id="candle-chart" width="800" height="400"></canvas>
-      </div>
-  
-      <!-- Chat -->
-      <div class="chat-feed">
-          <h4>📢 News & Updates</h4>
-          <div id="chat-box">
-              <p>[10:45] BTC rises 3%</p>
-              <p>[10:50] USD/JPY holding strong support</p>
-          </div>
-      </div>
-  </div>
-  
-<script>
-const app_id = "68037";
-const token = window.location.hash.includes("token") ? window.location.hash.split('=')[1] : null;
-const ws = new WebSocket(`wss://ws.deriv.com/websockets/v3?app_id=${app_id}`);
-let chart;
-let selectedMarket = 'R_100'; // Default
-let tickSubscriptionId = null;
+    <div class="main-layout">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h3>Deriv Panel</h3>
+            <button onclick="login()">🔐 Login</button>
+            <button onclick="toggleTheme()">🌗 Toggle Theme</button>
+            <button onclick="logout()">🚪 Logout</button>
+            <br><br>
+            <select id="market-select" onchange="changeMarket(this.value)">
+                <option value="">Select Market</option>
+            </select>
+            <p><strong>Live Price:</strong> <span id="live-price">-</span></p>
+        </div>
 
-function login() {
-    const redirect = window.location.origin;
-    window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${app_id}&redirect_uri=${redirect}`;
-}
+        <!-- Content -->
+        <div class="content">
+            <div class="header">
+                <h2>Deriv Trading Dashboard</h2>
+                <p id="user-info">Not logged in.</p>
+            </div>
+            <canvas id="candle-chart" width="800" height="400"></canvas>
+        </div>
 
-ws.onopen = () => {
-    if (token) {
-        ws.send(JSON.stringify({ authorize: token }));
-    } else {
-        fetchMarkets(); // No login needed
-        subscribeTicks(selectedMarket);
-        fetchCandles(selectedMarket);
-    }
-};
+        <!-- Chat -->
+        <div class="chat-feed">
+            <h4>📢 News & Updates</h4>
+            <div id="chat-box">
+                <p>[10:45] BTC rises 3%</p>
+                <p>[10:50] USD/JPY holding strong support</p>
+            </div>
+        </div>
+    </div>
 
-ws.onmessage = (msg) => {
-    const data = JSON.parse(msg.data);
+    <script>
+        const app_id = "68037";
+        const token = window.location.hash.includes("token") ? window.location.hash.split('=')[1] : null;
+        const ws = new WebSocket(`wss://ws.deriv.com/websockets/v3?app_id=${app_id}`);
+        let chart;
+        let selectedMarket = 'R_100'; // Default market
+        let tickSubscriptionId = null;
 
-    if (data.msg_type === "authorize") {
-        document.getElementById("user-info").innerText = `Hello, you are logged in.`;
-        fetchAccountInfo();
-        fetchMarkets();
-        subscribeTicks(selectedMarket);
-        fetchCandles(selectedMarket);
-    }
-
-    if (data.msg_type === "balance") {
-        document.getElementById("user-info").innerText += ` | Balance: ${data.balance.balance} ${data.balance.currency}`;
-    }
-
-    if (data.msg_type === "active_symbols") {
-        const select = document.getElementById("market-select");
-        data.active_symbols.forEach(symbol => {
-            const option = document.createElement("option");
-            option.value = symbol.symbol;
-            option.textContent = `${symbol.display_name}`;
-            select.appendChild(option);
-        });
-    }
-
-    if (data.msg_type === "history") {
-        drawCandles(data.history.candles);
-    }
-
-    if (data.msg_type === "tick") {
-        document.getElementById("live-price").innerText = data.tick.quote;
-    }
-};
-
-function fetchAccountInfo() {
-    ws.send(JSON.stringify({ balance: 1 }));
-    ws.send(JSON.stringify({ account_settings: 1 }));
-}
-
-function fetchMarkets() {
-    ws.send(JSON.stringify({
-        active_symbols: 'brief',
-        product_type: 'basic'
-    }));
-}
-
-function fetchCandles(symbol) {
-    ws.send(JSON.stringify({
-        ticks_history: symbol,
-        adjust_start_time: 1,
-        count: 40,
-        end: 'latest',
-        start: 1,
-        style: 'candles',
-        granularity: 60
-    }));
-}
-
-function subscribeTicks(symbol) {
-    if (tickSubscriptionId) {
-        ws.send(JSON.stringify({ forget: tickSubscriptionId }));
-    }
-    const msg = { ticks: symbol, subscribe: 1 };
-    ws.send(JSON.stringify(msg));
-}
-
-function changeMarket(symbol) {
-    selectedMarket = symbol;
-    fetchCandles(symbol);
-    subscribeTicks(symbol);
-}
-
-function drawCandles(candles) {
-    const labels = candles.map(c => new Date(c.epoch * 1000).toLocaleTimeString());
-    const data = candles.map(c => c.close);
-
-    if (chart) chart.destroy();
-
-    const ctx = document.getElementById("candle-chart").getContext("2d");
-    chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Close Price',
-                data: data,
-                borderColor: 'blue',
-                backgroundColor: 'lightblue',
-                tension: 0.3
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                x: { display: true },
-                y: { display: true }
-            }
+        function login() {
+            const redirect = window.location.origin;
+            window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${app_id}&redirect_uri=${redirect}`;
         }
-    });
-}
-</script>
+
+        ws.onopen = () => {
+            if (token) {
+                ws.send(JSON.stringify({ authorize: token }));
+            } else {
+                fetchMarkets(); // No login needed, fetch markets and subscribe
+                subscribeTicks(selectedMarket);
+                fetchCandles(selectedMarket);
+            }
+        };
+
+        ws.onmessage = (msg) => {
+            const data = JSON.parse(msg.data);
+
+            // Handle user authorization
+            if (data.msg_type === "authorize") {
+                document.getElementById("user-info").innerText = `Hello, you are logged in.`;
+                fetchAccountInfo();
+                fetchMarkets();
+                subscribeTicks(selectedMarket);
+                fetchCandles(selectedMarket);
+            }
+
+            // Handle balance updates
+            if (data.msg_type === "balance") {
+                document.getElementById("user-info").innerText += ` | Balance: ${data.balance.balance} ${data.balance.currency}`;
+            }
+
+            // Handle active symbols update for market selection
+            if (data.msg_type === "active_symbols") {
+                const select = document.getElementById("market-select");
+                data.active_symbols.forEach(symbol => {
+                    const option = document.createElement("option");
+                    option.value = symbol.symbol;
+                    option.textContent = `${symbol.display_name}`;
+                    select.appendChild(option);
+                });
+            }
+
+            // Handle candle data
+            if (data.msg_type === "history") {
+                drawCandles(data.history.candles);
+            }
+
+            // Handle live price updates
+            if (data.msg_type === "tick") {
+                document.getElementById("live-price").innerText = data.tick.quote;
+            }
+        };
+
+        function fetchAccountInfo() {
+            ws.send(JSON.stringify({ balance: 1 }));
+            ws.send(JSON.stringify({ account_settings: 1 }));
+        }
+
+        function fetchMarkets() {
+            ws.send(JSON.stringify({
+                active_symbols: 'brief',
+                product_type: 'basic'
+            }));
+        }
+
+        function fetchCandles(symbol) {
+            ws.send(JSON.stringify({
+                ticks_history: symbol,
+                adjust_start_time: 1,
+                count: 40,
+                end: 'latest',
+                start: 1,
+                style: 'candles',
+                granularity: 60
+            }));
+        }
+
+        function subscribeTicks(symbol) {
+            if (tickSubscriptionId) {
+                ws.send(JSON.stringify({ forget: tickSubscriptionId }));
+            }
+            const msg = { ticks: symbol, subscribe: 1 };
+            ws.send(JSON.stringify(msg));
+        }
+
+        function changeMarket(symbol) {
+            selectedMarket = symbol;
+            fetchCandles(symbol);
+            subscribeTicks(symbol);
+        }
+
+        function drawCandles(candles) {
+            const labels = candles.map(c => new Date(c.epoch * 1000).toLocaleTimeString());
+            const data = candles.map(c => c.close);
+
+            if (chart) chart.destroy();
+
+            const ctx = document.getElementById("candle-chart").getContext("2d");
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Close Price',
+                        data: data,
+                        borderColor: 'blue',
+                        backgroundColor: 'lightblue',
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { display: true },
+                        y: { display: true }
+                    }
+                }
+            });
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle("dark");
+        }
+
+        function logout() {
+            // Handle logout action (clear token, reset interface)
+            window.location.href = window.location.origin;
+        }
+    </script>
 </body>
 </html>
