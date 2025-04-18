@@ -1,283 +1,222 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trading Dashboard</title>
-  <link href="https://cdn.jsdelivr.net/npm/lightweight-charts@3.3.0/dist/lightweight-charts.css" rel="stylesheet">
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
-      margin: 0;
-      padding: 20px;
-    }
-
-    #chart-container {
-      width: 100%;
-      max-width: 800px;
-      margin: 0 auto;
-      height: 500px;
-    }
-
-    select {
-      padding: 10px;
-      font-size: 14px;
-      margin: 10px;
-    }
-
-    .button {
-      padding: 10px 20px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-
-    .button:hover {
-      background-color: #45a049;
-    }
-  </style>
+    <title>Deriv Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+    font-family: Arial, sans-serif;
+    background: #f0f2f5;
+    margin: 0;
+    transition: background 0.3s, color 0.3s;
+}
+.main-layout {
+    display: flex;
+    height: 100vh;
+}
+.sidebar {
+    width: 220px;
+    background: #2a3052;
+    color: white;
+    padding: 20px;
+}
+.sidebar button {
+    display: block;
+    width: 100%;
+    margin-bottom: 10px;
+    background: #3e4475;
+}
+.content {
+    flex: 1;
+    padding: 20px;
+}
+.chat-feed {
+    width: 250px;
+    background: #fff;
+    border-left: 1px solid #ccc;
+    padding: 15px;
+    overflow-y: auto;
+}
+#chat-box {
+    height: 90%;
+    overflow-y: auto;
+}
+.dark {
+    background: #1e1e2f;
+    color: white;
+}
+.dark .sidebar {
+    background: #141421;
+}
+.dark .chat-feed {
+    background: #2c2c3e;
+    color: white;
+}
+canvas {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 0 10px #ccc;
+}
+ }
+    </style>
 </head>
-
 <body>
-
-  <!-- Login Section -->
-  <div id="login-section">
-    <button id="loginBtn" class="button">Login</button>
+  <div class="main-layout">
+      <!-- Sidebar -->
+      <div class="sidebar">
+          <h3>Deriv Panel</h3>
+          <button onclick="login()">🔐 Login</button>
+          <button onclick="toggleTheme()">🌗 Toggle Theme</button>
+          <button onclick="logout()">🚪 Logout</button>
+          <br><br>
+          <select id="market-select" onchange="changeMarket(this.value)">
+              <option value="">Select Market</option>
+          </select>
+          <p><strong>Live Price:</strong> <span id="live-price">-</span></p>
+      </div>
+  
+      <!-- Content -->
+      <div class="content">
+          <div class="header">
+              <h2>Deriv Trading Dashboard</h2>
+              <p id="user-info">Not logged in.</p>
+          </div>
+          <canvas id="candle-chart" width="800" height="400"></canvas>
+      </div>
+  
+      <!-- Chat -->
+      <div class="chat-feed">
+          <h4>📢 News & Updates</h4>
+          <div id="chat-box">
+              <p>[10:45] BTC rises 3%</p>
+              <p>[10:50] USD/JPY holding strong support</p>
+          </div>
+      </div>
   </div>
+  
+<script>
+const app_id = "68037";
+const token = window.location.hash.includes("token") ? window.location.hash.split('=')[1] : null;
+const ws = new WebSocket(`wss://ws.deriv.com/websockets/v3?app_id=${app_id}`);
+let chart;
+let selectedMarket = 'R_100'; // Default
+let tickSubscriptionId = null;
 
-  <div id="user-info"></div>
-  <div id="balance-info"></div>
+function login() {
+    const redirect = window.location.origin;
+    window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${app_id}&redirect_uri=${redirect}`;
+}
 
-  <!-- Dropdowns for symbol and chart type -->
-  <div>
-    <label for="symbolSelector">Choose Symbol:</label>
-    <select id="symbolSelector">
-      <option value="R_100">R_100</option>
-      <option value="R_50">R_50</option>
-      <option value="R_25">R_25</option>
-    </select>
-  </div>
+ws.onopen = () => {
+    if (token) {
+        ws.send(JSON.stringify({ authorize: token }));
+    } else {
+        fetchMarkets(); // No login needed
+        subscribeTicks(selectedMarket);
+        fetchCandles(selectedMarket);
+    }
+};
 
-  <div>
-    <label for="chartTypeSelector">Chart Type:</label>
-    <select id="chartTypeSelector">
-      <option value="candlestick">Candlestick</option>
-      <option value="line">Line</option>
-    </select>
-  </div>
+ws.onmessage = (msg) => {
+    const data = JSON.parse(msg.data);
 
-  <!-- Chart Container -->
-  <div id="chart-container"></div>
+    if (data.msg_type === "authorize") {
+        document.getElementById("user-info").innerText = `Hello, you are logged in.`;
+        fetchAccountInfo();
+        fetchMarkets();
+        subscribeTicks(selectedMarket);
+        fetchCandles(selectedMarket);
+    }
 
-  <!-- Trade Button -->
-  <button id="placeTradeBtn" class="button">Place Trade</button>
+    if (data.msg_type === "balance") {
+        document.getElementById("user-info").innerText += ` | Balance: ${data.balance.balance} ${data.balance.currency}`;
+    }
 
-  <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@3.3.0/dist/lightweight-charts.standalone.production.js"></script>
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const APP_ID = "68037";
-      const REDIRECT_URL = window.location.origin + window.location.pathname;
-      const token = new URLSearchParams(window.location.search).get("token1");
-
-      const loginBtn = document.getElementById("loginBtn");
-      const loginSection = document.getElementById("login-section");
-      const userInfo = document.getElementById("user-info");
-      const balanceInfo = document.getElementById("balance-info");
-      const symbolSelector = document.getElementById("symbolSelector");
-      const chartContainer = document.getElementById("chart-container");
-      const placeTradeBtn = document.getElementById("placeTradeBtn");
-      const chartTypeSelector = document.getElementById("chartTypeSelector");
-
-      let ws, tickSubscriptionId = null;
-      let currentSymbol = symbolSelector.value;
-      let chart, chartSeries;
-
-      // Initialize the chart
-      function initChart() {
-        chart = LightweightCharts.createChart(chartContainer, {
-          width: chartContainer.clientWidth,
-          height: 500,
-          layout: { background: { color: "#ffffff" }, textColor: "#333" },
-          grid: { vertLines: { color: "#eee" }, horzLines: { color: "#eee" } },
-          crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-          priceScale: { borderColor: "#ccc" },
-          timeScale: { borderColor: "#ccc" },
+    if (data.msg_type === "active_symbols") {
+        const select = document.getElementById("market-select");
+        data.active_symbols.forEach(symbol => {
+            const option = document.createElement("option");
+            option.value = symbol.symbol;
+            option.textContent = `${symbol.display_name}`;
+            select.appendChild(option);
         });
+    }
 
-        // Default chart type is candlestick
-        chartSeries = chart.addCandlestickSeries();
-      }
+    if (data.msg_type === "history") {
+        drawCandles(data.history.candles);
+    }
 
-      // Update chart series type
-      function updateChartSeries(type) {
-        // Remove the current chart series
-        if (chartSeries) {
-          chart.removeSeries(chartSeries);
+    if (data.msg_type === "tick") {
+        document.getElementById("live-price").innerText = data.tick.quote;
+    }
+};
+
+function fetchAccountInfo() {
+    ws.send(JSON.stringify({ balance: 1 }));
+    ws.send(JSON.stringify({ account_settings: 1 }));
+}
+
+function fetchMarkets() {
+    ws.send(JSON.stringify({
+        active_symbols: 'brief',
+        product_type: 'basic'
+    }));
+}
+
+function fetchCandles(symbol) {
+    ws.send(JSON.stringify({
+        ticks_history: symbol,
+        adjust_start_time: 1,
+        count: 40,
+        end: 'latest',
+        start: 1,
+        style: 'candles',
+        granularity: 60
+    }));
+}
+
+function subscribeTicks(symbol) {
+    if (tickSubscriptionId) {
+        ws.send(JSON.stringify({ forget: tickSubscriptionId }));
+    }
+    const msg = { ticks: symbol, subscribe: 1 };
+    ws.send(JSON.stringify(msg));
+}
+
+function changeMarket(symbol) {
+    selectedMarket = symbol;
+    fetchCandles(symbol);
+    subscribeTicks(symbol);
+}
+
+function drawCandles(candles) {
+    const labels = candles.map(c => new Date(c.epoch * 1000).toLocaleTimeString());
+    const data = candles.map(c => c.close);
+
+    if (chart) chart.destroy();
+
+    const ctx = document.getElementById("candle-chart").getContext("2d");
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Close Price',
+                data: data,
+                borderColor: 'blue',
+                backgroundColor: 'lightblue',
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: { display: true },
+                y: { display: true }
+            }
         }
-
-        // Add new chart series based on the selected type
-        if (type === "line") {
-          chartSeries = chart.addLineSeries();
-        } else if (type === "candlestick") {
-          chartSeries = chart.addCandlestickSeries();
-        }
-      }
-
-      // Send WebSocket messages
-      function sendMessage(message) {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify(message));
-        }
-      }
-
-      // Authorization and subscriptions
-      function authorizeAndSubscribe(symbol) {
-        if (token) sendMessage({ authorize: token });
-        subscribeToTicks(symbol);
-        subscribeToBalance();
-        fetchCandles(symbol);
-      }
-
-      function subscribeToTicks(symbol) {
-        sendMessage({ ticks: symbol, subscribe: 1 });
-      }
-
-      function unsubscribeTicks() {
-        if (tickSubscriptionId) {
-          sendMessage({ forget: tickSubscriptionId });
-          tickSubscriptionId = null;
-        }
-      }
-
-      function subscribeToBalance() {
-        if (token) sendMessage({ balance: 1, subscribe: 1 });
-      }
-
-      function fetchCandles(symbol) {
-        sendMessage({
-          candles: symbol,
-          count: 100,
-          granularity: 60, // 1-minute candles
-        });
-      }
-
-      // Start WebSocket connection
-      function startWebSocket(symbol) {
-        if (ws) ws.close();
-
-        ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`);
-
-        ws.onopen = () => {
-          console.log("✅ WebSocket connected");
-          authorizeAndSubscribe(symbol);
-        };
-
-        ws.onmessage = ({ data }) => {
-          const msg = JSON.parse(data);
-          console.log("Message received:", msg);
-
-          if (msg.error) return console.error("❌", msg.error.message);
-
-          switch (msg.msg_type) {
-            case "authorize":
-              userInfo.innerHTML = `✅ Logged in as <strong>${msg.authorize.loginid}</strong>`;
-              break;
-
-            case "balance":
-              const { balance, currency } = msg.balance;
-              balanceInfo.innerHTML = `💰 Balance: <span class="text-dark">${currency} ${balance.toFixed(2)}</span>`;
-              break;
-
-            case "tick":
-              tickSubscriptionId = msg.tick.id;
-              const { quote, epoch } = msg.tick;
-              console.log(`New tick data: ${quote} at ${epoch}`);
-
-              if (quote && epoch) {
-                document.getElementById("lastPrice").textContent = quote.toFixed(2);
-                document.getElementById("marketName").textContent = currentSymbol;
-                document.getElementById("status").textContent = "⚡ Live Data";
-              }
-              break;
-
-            case "candles":
-              const candleData = msg.candles.map(c => ({
-                time: c.epoch,
-                open: c.open,
-                high: c.high,
-                low: c.low,
-                close: c.close,
-              }));
-
-              if (candleData && candleData.length > 0) {
-                console.log("Candle data:", candleData);
-                chartSeries.setData(candleData);
-              } else {
-                console.error("No candle data received");
-              }
-              break;
-
-            default:
-              console.log("Unknown message type:", msg);
-          }
-        };
-
-        ws.onerror = (e) => console.error("⚠️ WS Error", e);
-        ws.onclose = () => setTimeout(() => startWebSocket(currentSymbol), 1500);
-      }
-
-      // Handle login redirect
-      if (token) {
-        loginSection.classList.add("d-none");
-        userInfo.textContent = "🔄 Logging in...";
-      }
-
-      loginBtn.addEventListener("click", () => {
-        const loginUrl = `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URL)}`;
-        window.location.href = loginUrl;
-      });
-
-      // Symbol switching
-      symbolSelector.addEventListener("change", () => {
-        unsubscribeTicks();
-        currentSymbol = symbolSelector.value;
-        startWebSocket(currentSymbol);
-        fetchCandles(currentSymbol); // Refresh candles on symbol change
-      });
-
-      // Chart type switching
-      chartTypeSelector.addEventListener("change", () => {
-        updateChartSeries(chartTypeSelector.value);
-        fetchCandles(currentSymbol); // Refresh chart after type change
-      });
-
-      // Trade button (mock)
-      placeTradeBtn.addEventListener("click", () => {
-        if (!token) return alert("🚫 Login first to trade.");
-
-        sendMessage({
-          buy: 1,
-          price: 1,
-          parameters: {
-            amount: 1,
-            basis: "stake",
-            contract_type: "CALL",
-            currency: "USD",
-            duration: 1,
-            duration_unit: "m",
-            symbol: currentSymbol,
-          },
-        });
-      });
-
-      // Chart init & WebSocket start
-      initChart();
-      startWebSocket(currentSymbol);
     });
-  </script>
+}
+</script>
 </body>
-
 </html>
