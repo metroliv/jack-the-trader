@@ -1,3 +1,4 @@
+
 document.addEventListener("DOMContentLoaded", () => {
   const APP_ID = "68037";
   const REDIRECT_URL = window.location.origin + window.location.pathname;
@@ -13,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let ws, tickSubscriptionId = null;
   let currentSymbol = symbolSelector.value;
-  let lineSeries, chart;
+  let candlestickSeries, chart;
 
   function initChart() {
     chart = LightweightCharts.createChart(chartContainer, {
@@ -25,7 +26,8 @@ document.addEventListener("DOMContentLoaded", () => {
       priceScale: { borderColor: "#ccc" },
       timeScale: { borderColor: "#ccc" },
     });
-    lineSeries = chart.addLineSeries();
+
+    candlestickSeries = chart.addCandlestickSeries();
   }
 
   function sendMessage(message) {
@@ -38,6 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (token) sendMessage({ authorize: token });
     subscribeToTicks(symbol);
     subscribeToBalance();
+    fetchCandles(symbol);
   }
 
   function subscribeToTicks(symbol) {
@@ -53,6 +56,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function subscribeToBalance() {
     if (token) sendMessage({ balance: 1, subscribe: 1 });
+  }
+
+  function fetchCandles(symbol) {
+    sendMessage({
+      candles: symbol,
+      count: 100,
+      granularity: 60, // 1-minute candles
+    });
   }
 
   function startWebSocket(symbol) {
@@ -82,10 +93,20 @@ document.addEventListener("DOMContentLoaded", () => {
         case "tick":
           tickSubscriptionId = msg.tick.id;
           const { quote, epoch } = msg.tick;
-          lineSeries.update({ time: epoch, value: quote });
           document.getElementById("lastPrice").textContent = quote.toFixed(2);
           document.getElementById("marketName").textContent = currentSymbol;
           document.getElementById("status").textContent = "⚡ Live Data";
+          break;
+
+        case "candles":
+          const candleData = msg.candles.map(c => ({
+            time: c.epoch,
+            open: c.open,
+            high: c.high,
+            low: c.low,
+            close: c.close,
+          }));
+          candlestickSeries.setData(candleData);
           break;
       }
     };
