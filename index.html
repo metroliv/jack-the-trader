@@ -1,100 +1,283 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Jack The Trader - Deriv Dashboard</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
-  <link rel="stylesheet" href="css/style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trading Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/lightweight-charts@3.3.0/dist/lightweight-charts.css" rel="stylesheet">
   <style>
     body {
-      background-color: #f8f9fa;
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 20px;
     }
-    #tv_chart_container {
-      height: 500px;
+
+    #chart-container {
       width: 100%;
-      border: 1px solid #ccc;
-      background-color: #fff;
+      max-width: 800px;
+      margin: 0 auto;
+      height: 500px;
     }
-    .card-header {
-      font-weight: bold;
+
+    select {
+      padding: 10px;
+      font-size: 14px;
+      margin: 10px;
     }
-    #contract-info {
-      font-size: 0.95rem;
+
+    .button {
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    .button:hover {
+      background-color: #45a049;
     }
   </style>
 </head>
+
 <body>
-  <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h2 class="text-primary">📊 Jack The Trader</h2>
-      <div class="text-end">
-        <div id="user-info" class="mb-1 text-secondary small">👤 You are browsing as a guest</div>
-        <div id="balance-info" class="fw-bold text-success"></div>
-        <div id="login-section">
-          <button class="btn btn-success" id="loginBtn">🔐 Login with Deriv</button>
-        </div>
-      </div>
-    </div>
 
-    <!-- Symbol Selection -->
-    <div class="mb-4">
-      <label for="symbolSelector" class="form-label">Select Market</label>
-      <select id="symbolSelector" class="form-select">
-        <option value="R_100">Volatility 100 Index</option>
-        <option value="R_75">Volatility 75 Index</option>
-        <option value="R_50">Volatility 50 Index</option>
-        <option value="1HZ100V">1HZ Volatility Index</option>
-      </select>
-    </div>
-
-    <!-- Chart Type Selection -->
-    <div class="mb-4">
-      <label for="chartTypeSelector" class="form-label">Select Chart Type</label>
-      <select id="chartTypeSelector" class="form-select">
-        <option value="line">Line Chart</option>
-        <option value="candlestick">Candlestick Chart</option>
-      </select>
-    </div>
-
-    <!-- Chart Section -->
-    <div class="card mb-4">
-      <div class="card-header bg-dark text-white">📈 Live Chart (Powered by Deriv API)</div>
-      <div class="card-body">
-        <div id="tv_chart_container"></div>
-      </div>
-    </div>
-
-    <!-- Contract Info Section -->
-    <div class="card mb-4">
-      <div class="card-header">📝 Contract Details</div>
-      <div class="card-body" id="contract-info">
-        <p><strong>Market:</strong> <span id="marketName">--</span></p>
-        <p><strong>Contract Type:</strong> <span id="contractType">CALL</span></p>
-        <p><strong>Last Price:</strong> <span id="lastPrice">--</span></p>
-        <p><strong>Status:</strong> <span id="status">Waiting for selection...</span></p>
-      </div>
-      <button class="btn btn-primary" id="placeTradeBtn">💼 Place Demo Trade</button>
-    </div>
-
-    <!-- Coming Soon Tabs -->
-    <div class="card mb-5">
-      <div class="card-header">🧪 Coming Features</div>
-      <div class="card-body">
-        <ul class="list-group list-group-flush">
-          <li class="list-group-item">Digits Contracts</li>
-          <li class="list-group-item">Rise / Fall Contracts</li>
-          <li class="list-group-item">Multipliers</li>
-          <li class="list-group-item">Bot Integration</li>
-        </ul>
-      </div>
-    </div>
+  <!-- Login Section -->
+  <div id="login-section">
+    <button id="loginBtn" class="button">Login</button>
   </div>
 
-  <!-- JavaScript Dependencies -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
-  <script src="js/app.js"></script>
+  <div id="user-info"></div>
+  <div id="balance-info"></div>
+
+  <!-- Dropdowns for symbol and chart type -->
+  <div>
+    <label for="symbolSelector">Choose Symbol:</label>
+    <select id="symbolSelector">
+      <option value="R_100">R_100</option>
+      <option value="R_50">R_50</option>
+      <option value="R_25">R_25</option>
+    </select>
+  </div>
+
+  <div>
+    <label for="chartTypeSelector">Chart Type:</label>
+    <select id="chartTypeSelector">
+      <option value="candlestick">Candlestick</option>
+      <option value="line">Line</option>
+    </select>
+  </div>
+
+  <!-- Chart Container -->
+  <div id="chart-container"></div>
+
+  <!-- Trade Button -->
+  <button id="placeTradeBtn" class="button">Place Trade</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@3.3.0/dist/lightweight-charts.standalone.production.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const APP_ID = "68037";
+      const REDIRECT_URL = window.location.origin + window.location.pathname;
+      const token = new URLSearchParams(window.location.search).get("token1");
+
+      const loginBtn = document.getElementById("loginBtn");
+      const loginSection = document.getElementById("login-section");
+      const userInfo = document.getElementById("user-info");
+      const balanceInfo = document.getElementById("balance-info");
+      const symbolSelector = document.getElementById("symbolSelector");
+      const chartContainer = document.getElementById("chart-container");
+      const placeTradeBtn = document.getElementById("placeTradeBtn");
+      const chartTypeSelector = document.getElementById("chartTypeSelector");
+
+      let ws, tickSubscriptionId = null;
+      let currentSymbol = symbolSelector.value;
+      let chart, chartSeries;
+
+      // Initialize the chart
+      function initChart() {
+        chart = LightweightCharts.createChart(chartContainer, {
+          width: chartContainer.clientWidth,
+          height: 500,
+          layout: { background: { color: "#ffffff" }, textColor: "#333" },
+          grid: { vertLines: { color: "#eee" }, horzLines: { color: "#eee" } },
+          crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+          priceScale: { borderColor: "#ccc" },
+          timeScale: { borderColor: "#ccc" },
+        });
+
+        // Default chart type is candlestick
+        chartSeries = chart.addCandlestickSeries();
+      }
+
+      // Update chart series type
+      function updateChartSeries(type) {
+        // Remove the current chart series
+        if (chartSeries) {
+          chart.removeSeries(chartSeries);
+        }
+
+        // Add new chart series based on the selected type
+        if (type === "line") {
+          chartSeries = chart.addLineSeries();
+        } else if (type === "candlestick") {
+          chartSeries = chart.addCandlestickSeries();
+        }
+      }
+
+      // Send WebSocket messages
+      function sendMessage(message) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify(message));
+        }
+      }
+
+      // Authorization and subscriptions
+      function authorizeAndSubscribe(symbol) {
+        if (token) sendMessage({ authorize: token });
+        subscribeToTicks(symbol);
+        subscribeToBalance();
+        fetchCandles(symbol);
+      }
+
+      function subscribeToTicks(symbol) {
+        sendMessage({ ticks: symbol, subscribe: 1 });
+      }
+
+      function unsubscribeTicks() {
+        if (tickSubscriptionId) {
+          sendMessage({ forget: tickSubscriptionId });
+          tickSubscriptionId = null;
+        }
+      }
+
+      function subscribeToBalance() {
+        if (token) sendMessage({ balance: 1, subscribe: 1 });
+      }
+
+      function fetchCandles(symbol) {
+        sendMessage({
+          candles: symbol,
+          count: 100,
+          granularity: 60, // 1-minute candles
+        });
+      }
+
+      // Start WebSocket connection
+      function startWebSocket(symbol) {
+        if (ws) ws.close();
+
+        ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`);
+
+        ws.onopen = () => {
+          console.log("✅ WebSocket connected");
+          authorizeAndSubscribe(symbol);
+        };
+
+        ws.onmessage = ({ data }) => {
+          const msg = JSON.parse(data);
+          console.log("Message received:", msg);
+
+          if (msg.error) return console.error("❌", msg.error.message);
+
+          switch (msg.msg_type) {
+            case "authorize":
+              userInfo.innerHTML = `✅ Logged in as <strong>${msg.authorize.loginid}</strong>`;
+              break;
+
+            case "balance":
+              const { balance, currency } = msg.balance;
+              balanceInfo.innerHTML = `💰 Balance: <span class="text-dark">${currency} ${balance.toFixed(2)}</span>`;
+              break;
+
+            case "tick":
+              tickSubscriptionId = msg.tick.id;
+              const { quote, epoch } = msg.tick;
+              console.log(`New tick data: ${quote} at ${epoch}`);
+
+              if (quote && epoch) {
+                document.getElementById("lastPrice").textContent = quote.toFixed(2);
+                document.getElementById("marketName").textContent = currentSymbol;
+                document.getElementById("status").textContent = "⚡ Live Data";
+              }
+              break;
+
+            case "candles":
+              const candleData = msg.candles.map(c => ({
+                time: c.epoch,
+                open: c.open,
+                high: c.high,
+                low: c.low,
+                close: c.close,
+              }));
+
+              if (candleData && candleData.length > 0) {
+                console.log("Candle data:", candleData);
+                chartSeries.setData(candleData);
+              } else {
+                console.error("No candle data received");
+              }
+              break;
+
+            default:
+              console.log("Unknown message type:", msg);
+          }
+        };
+
+        ws.onerror = (e) => console.error("⚠️ WS Error", e);
+        ws.onclose = () => setTimeout(() => startWebSocket(currentSymbol), 1500);
+      }
+
+      // Handle login redirect
+      if (token) {
+        loginSection.classList.add("d-none");
+        userInfo.textContent = "🔄 Logging in...";
+      }
+
+      loginBtn.addEventListener("click", () => {
+        const loginUrl = `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URL)}`;
+        window.location.href = loginUrl;
+      });
+
+      // Symbol switching
+      symbolSelector.addEventListener("change", () => {
+        unsubscribeTicks();
+        currentSymbol = symbolSelector.value;
+        startWebSocket(currentSymbol);
+        fetchCandles(currentSymbol); // Refresh candles on symbol change
+      });
+
+      // Chart type switching
+      chartTypeSelector.addEventListener("change", () => {
+        updateChartSeries(chartTypeSelector.value);
+        fetchCandles(currentSymbol); // Refresh chart after type change
+      });
+
+      // Trade button (mock)
+      placeTradeBtn.addEventListener("click", () => {
+        if (!token) return alert("🚫 Login first to trade.");
+
+        sendMessage({
+          buy: 1,
+          price: 1,
+          parameters: {
+            amount: 1,
+            basis: "stake",
+            contract_type: "CALL",
+            currency: "USD",
+            duration: 1,
+            duration_unit: "m",
+            symbol: currentSymbol,
+          },
+        });
+      });
+
+      // Chart init & WebSocket start
+      initChart();
+      startWebSocket(currentSymbol);
+    });
+  </script>
 </body>
+
 </html>

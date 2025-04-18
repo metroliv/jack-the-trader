@@ -1,4 +1,3 @@
-
 document.addEventListener("DOMContentLoaded", () => {
   const APP_ID = "68037";
   const REDIRECT_URL = window.location.origin + window.location.pathname;
@@ -11,10 +10,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const symbolSelector = document.getElementById("symbolSelector");
   const chartContainer = document.getElementById("tv_chart_container");
   const placeTradeBtn = document.getElementById("placeTradeBtn");
+  const chartTypeSelector = document.getElementById("chartTypeSelector");
 
   let ws, tickSubscriptionId = null;
   let currentSymbol = symbolSelector.value;
-  let candlestickSeries, chart;
+  let chart, chartSeries;
 
   function initChart() {
     chart = LightweightCharts.createChart(chartContainer, {
@@ -27,7 +27,22 @@ document.addEventListener("DOMContentLoaded", () => {
       timeScale: { borderColor: "#ccc" },
     });
 
-    candlestickSeries = chart.addCandlestickSeries();
+    // Default chart type is candlestick
+    chartSeries = chart.addCandlestickSeries();
+  }
+
+  function updateChartSeries(type) {
+    // Remove existing series
+    if (chartSeries) {
+      chart.removeSeries(chartSeries);
+    }
+
+    // Create new series based on selected type
+    if (type === "line") {
+      chartSeries = chart.addLineSeries();
+    } else if (type === "candlestick") {
+      chartSeries = chart.addCandlestickSeries();
+    }
   }
 
   function sendMessage(message) {
@@ -40,7 +55,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (token) sendMessage({ authorize: token });
     subscribeToTicks(symbol);
     subscribeToBalance();
-    fetchCandles(symbol);
+    fetchCandles(symbol); // Fetch candles when the symbol is selected
   }
 
   function subscribeToTicks(symbol) {
@@ -59,6 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function fetchCandles(symbol) {
+    // Fetch 100 candles for the selected symbol
     sendMessage({
       candles: symbol,
       count: 100,
@@ -106,8 +122,10 @@ document.addEventListener("DOMContentLoaded", () => {
             low: c.low,
             close: c.close,
           }));
-          candlestickSeries.setData(candleData);
+          chartSeries.setData(candleData);
           break;
+
+        // Handle other WebSocket message types if needed
       }
     };
 
@@ -131,6 +149,12 @@ document.addEventListener("DOMContentLoaded", () => {
     unsubscribeTicks();
     currentSymbol = symbolSelector.value;
     startWebSocket(currentSymbol);
+  });
+
+  // Chart type switching
+  chartTypeSelector.addEventListener("change", () => {
+    updateChartSeries(chartTypeSelector.value);
+    fetchCandles(currentSymbol); // Re-fetch candles for the new chart type
   });
 
   // Trade button (mock)
