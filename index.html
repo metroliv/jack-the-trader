@@ -117,37 +117,60 @@
 
     <script>
         const app_id = "68037";
-        const token = window.location.hash.includes("token") ? window.location.hash.split('=')[1] : null;
+        let token = window.location.hash.includes("token") ? window.location.hash.split('=')[1] : null;
         const ws = new WebSocket(`wss://ws.deriv.com/websockets/v3?app_id=${app_id}`);
         let chart;
         let selectedMarket = 'R_100'; // Default market
         let tickSubscriptionId = null;
 
+        // Handle login
         function login() {
             const redirect = window.location.origin;
             window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${app_id}&redirect_uri=${redirect}`;
         }
 
+        // Handle theme toggle
+        function toggleTheme() {
+            document.body.classList.toggle("dark");
+        }
+
+        // Handle logout
+        function logout() {
+            // Clear the token and reset interface
+            window.location.hash = ''; // Clear the URL token
+            token = null;
+            document.getElementById("user-info").innerText = "Not logged in.";
+            window.location.href = window.location.origin; // Refresh page to reset everything
+        }
+
+        // WebSocket onopen handler
         ws.onopen = () => {
             if (token) {
                 ws.send(JSON.stringify({ authorize: token }));
+                document.getElementById("user-info").innerText = "Checking login...";
             } else {
+                document.getElementById("user-info").innerText = "Not logged in.";
                 fetchMarkets(); // No login needed, fetch markets and subscribe
                 subscribeTicks(selectedMarket);
                 fetchCandles(selectedMarket);
             }
         };
 
+        // WebSocket onmessage handler
         ws.onmessage = (msg) => {
             const data = JSON.parse(msg.data);
 
             // Handle user authorization
             if (data.msg_type === "authorize") {
-                document.getElementById("user-info").innerText = `Hello, you are logged in.`;
-                fetchAccountInfo();
-                fetchMarkets();
-                subscribeTicks(selectedMarket);
-                fetchCandles(selectedMarket);
+                if (data.authorized) {
+                    document.getElementById("user-info").innerText = `Hello, you are logged in.`;
+                    fetchAccountInfo();
+                    fetchMarkets();
+                    subscribeTicks(selectedMarket);
+                    fetchCandles(selectedMarket);
+                } else {
+                    document.getElementById("user-info").innerText = "Login failed. Please try again.";
+                }
             }
 
             // Handle balance updates
@@ -177,11 +200,13 @@
             }
         };
 
+        // Fetch account info
         function fetchAccountInfo() {
             ws.send(JSON.stringify({ balance: 1 }));
             ws.send(JSON.stringify({ account_settings: 1 }));
         }
 
+        // Fetch available markets
         function fetchMarkets() {
             ws.send(JSON.stringify({
                 active_symbols: 'brief',
@@ -189,6 +214,7 @@
             }));
         }
 
+        // Fetch candles for a selected market
         function fetchCandles(symbol) {
             ws.send(JSON.stringify({
                 ticks_history: symbol,
@@ -201,6 +227,7 @@
             }));
         }
 
+        // Subscribe to live market ticks
         function subscribeTicks(symbol) {
             if (tickSubscriptionId) {
                 ws.send(JSON.stringify({ forget: tickSubscriptionId }));
@@ -209,12 +236,14 @@
             ws.send(JSON.stringify(msg));
         }
 
+        // Change selected market
         function changeMarket(symbol) {
             selectedMarket = symbol;
             fetchCandles(symbol);
             subscribeTicks(symbol);
         }
 
+        // Draw candles on the chart
         function drawCandles(candles) {
             const labels = candles.map(c => new Date(c.epoch * 1000).toLocaleTimeString());
             const data = candles.map(c => c.close);
@@ -242,15 +271,6 @@
                     }
                 }
             });
-        }
-
-        function toggleTheme() {
-            document.body.classList.toggle("dark");
-        }
-
-        function logout() {
-            // Handle logout action (clear token, reset interface)
-            window.location.href = window.location.origin;
         }
     </script>
 </body>
