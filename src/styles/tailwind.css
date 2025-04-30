@@ -1,0 +1,70 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Primary Colors */
+    --color-primary: #2563EB; /* blue-600 */
+    --color-primary-hover: #1D4ED8; /* blue-700 */
+    --color-primary-light: #DBEAFE; /* blue-100 */
+    
+    /* Neutral Colors */
+    --color-background: #F8FAFC; /* slate-50 */
+    --color-surface: #FFFFFF; /* white */
+    --color-border: #E2E8F0; /* slate-200 */
+    --color-text-primary: #0F172A; /* slate-900 */
+    --color-text-secondary: #475569; /* slate-600 */
+    --color-text-tertiary: #94A3B8; /* slate-400 */
+    
+    /* Semantic Colors */
+    --color-success: #10B981; /* emerald-500 */
+    --color-success-light: #ECFDF5; /* emerald-50 */
+    --color-danger: #EF4444; /* red-500 */
+    --color-danger-light: #FEF2F2; /* red-50 */
+    --color-warning: #F59E0B; /* amber-500 */
+    --color-info: #0EA5E9; /* sky-500 */
+  }
+}
+
+@layer components {
+  /* Typography styles */
+  .display-large {
+    @apply text-4xl font-bold font-display;
+  }
+  
+  .display-medium {
+    @apply text-3xl font-bold font-display;
+  }
+  
+  .display-small {
+    @apply text-2xl font-bold font-display;
+  }
+  
+  .heading {
+    @apply text-xl font-semibold font-display;
+  }
+  
+  .subheading {
+    @apply text-lg font-medium font-sans;
+  }
+  
+  .body-large {
+    @apply text-base font-normal font-sans;
+  }
+  
+  .body-medium {
+    @apply text-sm font-normal font-sans;
+  }
+  
+  .body-small {
+    @apply text-xs font-normal font-sans;
+  }
+  
+  .data {
+    @apply font-mono text-sm;
+  }
+}
